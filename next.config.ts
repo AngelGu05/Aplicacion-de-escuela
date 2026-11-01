@@ -1,0 +1,24 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      // Las lecciones interactivas pueden pesar varios MB (Vercel acepta hasta ~4.5 MB).
+      bodySizeLimit: "4mb",
+    },
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Referrer-Policy", value: "same-origin" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+        ],
+      },
+    ];
+  },
+};
+
+export default nextConfig;

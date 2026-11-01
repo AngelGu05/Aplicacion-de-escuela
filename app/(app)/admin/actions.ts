@@ -1,0 +1,155 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { FormState } from "@/app/login/actions";
+
+const UUID = /^[0-9a-f-]{36}$/i;
+
+function str(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+// ---------------------------------------------------------------- Lecciones
+
+function readLesson(formData: FormData) {
+  const kind = str(formData, "kind") === "aviso" ? "aviso" : "interactiva";
+  return {
+    subject_id: str(formData, "subject_id"),
+    title: str(formData, "title"),
+    description: str(formData, "description") || null,
+    kind,
+    content: String(formData.get("content") ?? ""),
+    is_premium: formData.get("is_premium") === "on",
+    published: formData.get("published") === "on",
+  } as const;
+}
+
+function validateLesson(l: ReturnType<typeof readLesson>): string | null {
+  if (!UUID.test(l.subject_id)) return "Elige una materia.";
+  if (!l.title) return "Escribe un título.";
+  if (!l.content.trim()) return l.kind === "aviso" ? "Escribe el texto del aviso." : "Sube o pega el HTML de la lección.";
+  return null;
+}
+
+export async function saveLesson(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const id = str(formData, "id");
+  const lesson = readLesson(formData);
+  const problem = validateLesson(lesson);
+  if (problem) return { error: problem };
+
+  const db = createAdminClient();
+  if (id) {
+    if (!UUID.test(id)) return { error: "Lección no válida." };
+    const { error } = await db
+      .from("lessons")
+      .update({ ...lesson, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) return { error: "No se pudo guardar: " + error.message };
+  } else {
+    const { error } = await db.from("lessons").insert(lesson);
+    if (error) return { error: "No se pudo guardar: " + error.message };
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/admin");
+}
+
+export async function toggleLessonFlag(formData: FormData) {
+  await requireAdmin();
+  const id = str(formData, "id");
+  const flag = str(formData, "flag");
+  if (!UUID.test(id) || (flag !== "is_premium" && flag !== "published")) return;
+  const value = str(formData, "value") === "true";
+  await createAdminClient().from("lessons").update({ [flag]: value }).eq("id", id);
+  revalidatePath("/", "layout");
+}
+
+export async function deleteLesson(formData: FormData) {
+  await requireAdmin();
+  const id = str(formData, "id");
+  if (!UUID.test(id)) return;
+  await createAdminClient().from("lessons").delete().eq("id", id);
+  revalidatePath("/", "layout");
+  redirect("/admin");
+}
+
+// ---------------------------------------------------------------- Alumnos
+
+export async function createStudent(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const fullName = str(formData, "full_name");
+  const email = str(formData, "email").toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const premium = formData.get("premium") === "on";
+  const values = { full_name: fullName, email };
+  if (!email) return { error: "Escribe el correo del alumno.", values };
+  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres.", values };
+
+  const db = createAdminClient();
+  const { data, error } = await db.auth.admin.createUser({ email, password, email_confirm: true });
+  if (error || !data.user) {
+    const msg = error?.message?.toLowerCase().includes("already")
+      ? "Ya existe una cuenta con ese correo."
+      : error?.message ?? "No se pudo crear la cuenta.";
+    return { error: msg, values };
+  }
+
+  const { error: profileError } = await db
+    .from("profiles")
+    .insert({ id: data.user.id, email, full_name: fullName || null, role: "student", premium });
+  if (profileError) {
+    await db.auth.admin.deleteUser(data.user.id);
+    return { error: "No se pudo guardar el perfil: " + profileError.message, values };
+  }
+
+  revalidatePath("/admin/alumnos");
+  return { ok: `Cuenta creada para ${email}. Pásale su correo y contraseña.` };
+}
+
+async function targetStudent(formData: FormData) {
+  const admin = await requireAdmin();
+  const id = str(formData, "id");
+  if (!UUID.test(id) || id === admin.id) return null;
+  return id;
+}
+
+export async function setStudentFlag(formData: FormData) {
+  const id = await targetStudent(formData);
+  const flag = str(formData, "flag");
+  if (!id || (flag !== "premium" && flag !== "disabled")) return;
+  const value = str(formData, "value") === "true";
+  const update: Record<string, unknown> = { [flag]: value };
+  if (flag === "disabled" && value) update.active_session_id = null; // suspender = sacar ya
+  await createAdminClient().from("profiles").update(update).eq("id", id);
+  revalidatePath("/admin/alumnos");
+}
+
+export async function forceLogout(formData: FormData) {
+  const id = await targetStudent(formData);
+  if (!id) return;
+  await createAdminClient().from("profiles").update({ active_session_id: null }).eq("id", id);
+  revalidatePath("/admin/alumnos");
+}
+
+export async function resetPassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = await targetStudent(formData);
+  if (!id) return { error: "Alumno no válido." };
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) return { error: "Mínimo 8 caracteres." };
+  const db = createAdminClient();
+  const { error } = await db.auth.admin.updateUserById(id, { password });
+  if (error) return { error: error.message };
+  await db.from("profiles").update({ active_session_id: null }).eq("id", id);
+  return { ok: "Contraseña cambiada." };
+}
+
+export async function deleteStudent(formData: FormData) {
+  const id = await targetStudent(formData);
+  if (!id) return;
+  await createAdminClient().auth.admin.deleteUser(id); // el perfil se borra en cascada
+  revalidatePath("/admin/alumnos");
+}
