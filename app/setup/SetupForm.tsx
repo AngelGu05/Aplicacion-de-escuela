@@ -14,7 +14,7 @@ export function SetupForm() {
       </label>
       <label className="field">
         <span>Correo</span>
-        <input name="email" type="email" required />
+        <input name="email" type="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} required />
       </label>
       <label className="field">
         <span>Contraseña (mínimo 8 caracteres)</span>

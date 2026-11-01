@@ -24,7 +24,7 @@ export function NewStudentForm() {
       <h2>Crear cuenta de alumno</h2>
       <div className="form-row">
         <label className="field"><span>Nombre</span><input name="full_name" placeholder="Nombre y apellido" defaultValue={state?.values?.full_name} key={"n" + (state?.values?.full_name ?? "")} /></label>
-        <label className="field"><span>Correo</span><input name="email" type="email" required defaultValue={state?.values?.email} key={"e" + (state?.values?.email ?? "")} /></label>
+        <label className="field"><span>Correo</span><input name="email" type="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={state?.values?.email} key={"e" + (state?.values?.email ?? "")} /></label>
       </div>
       <label className="field">
         <span>Contraseña</span>
