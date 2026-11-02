@@ -668,3 +668,11 @@ details.card[open] > summary { margin-bottom: 14px; }
   .asis-fab { bottom: calc(80px + env(safe-area-inset-bottom)); right: 14px; width: 54px; height: 54px; font-size: 26px; }
   .asis-panel { right: 8px; left: 8px; width: auto; bottom: calc(76px + env(safe-area-inset-bottom)); height: calc(100dvh - 150px - env(safe-area-inset-bottom)); }
 }
+
+.asis-voces { display: grid; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); max-height: 55%; overflow-y: auto; }
+.asis-voces select { padding: 8px 10px !important; font-size: .88rem; }
+.asis-vel { display: flex; align-items: center; gap: 10px; font-size: .85rem; }
+.asis-vel input { flex: 1; accent-color: var(--primary); }
+.asis-voces ul { margin: 6px 0; padding-left: 18px; display: grid; gap: 6px; }
+.asis-voces .btn { justify-self: start; }
+.asis-icon.is-on { background: rgba(255,255,255,.32); }

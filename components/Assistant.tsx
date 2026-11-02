@@ -50,6 +50,30 @@ function paraVoz(text: string) {
     .trim();
 }
 
+/** Qué tan natural suena una voz (por su nombre). Las "Natural", "Premium" o "Mejorada" suenan casi humanas. */
+function puntajeVoz(v: SpeechSynthesisVoice) {
+  const n = v.name.toLowerCase();
+  const lang = v.lang.replace("_", "-");
+  let p = 0;
+  if (/natural|neural|online/.test(n)) p += 10;
+  if (/premium|enhanced|mejorad|calidad alta|high quality|wavenet|studio/.test(n)) p += 8;
+  if (/google/.test(n)) p += 4;
+  if (/siri/.test(n)) p += 6;
+  if (/paulina|monica|mónica|marisol|jorge|juan|diego|isabela|sabina|dalia|jorge|margarita|roberto|elena|alvaro|álvaro|elvira|camila|lorenzo|valentina/.test(n)) p += 2;
+  if (/compact|espeak|robot|novelty|bad news|bells|whisper|zarvox|trinoids|albert|bubbles|cellos|organ|superstar|jester|wobble|grandma|grandpa|eddy|flo|reed|rocko|sandy|shelley/.test(n)) p -= 12;
+  if (lang === "es-PA") p += 4;
+  else if (["es-419", "es-MX", "es-US", "es-CO", "es-CR", "es-VE"].includes(lang)) p += 3;
+  else if (lang === "es-ES") p += 1;
+  if (!v.localService) p += 1;
+  return p;
+}
+const vocesEspanol = () => (typeof window !== "undefined" && "speechSynthesis" in window ? window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith("es")) : []);
+const etiquetaVoz = (v: SpeechSynthesisVoice) => {
+  const pais: Record<string, string> = { "es-PA": "Panamá", "es-MX": "México", "es-US": "EE. UU.", "es-ES": "España", "es-CO": "Colombia", "es-419": "Latinoamérica", "es-AR": "Argentina", "es-CL": "Chile", "es-CR": "Costa Rica", "es-VE": "Venezuela", "es-PE": "Perú" };
+  const nombre = v.name.split("(")[0].split(" - ")[0].replace(/Microsoft |Online|Natural/gi, " ").replace(/\s+/g, " ").trim() || v.name;
+  return `${puntajeVoz(v) >= 8 ? "✨ " : ""}${nombre} · ${pais[v.lang.replace("_", "-")] ?? v.lang}`;
+};
+
 type SR = {
   lang: string; interimResults: boolean; continuous: boolean;
   start: () => void; stop: () => void; abort: () => void;
@@ -67,6 +91,10 @@ export function Assistant({ firstName, userId, isAdmin }: { firstName: string; u
   const [listening, setListening] = useState(false);
   const [voz, setVoz] = useState(true);
   const [micOk, setMicOk] = useState(false);
+  const [voces, setVoces] = useState<SpeechSynthesisVoice[]>([]);
+  const [vozNombre, setVozNombre] = useState("");
+  const [velocidad, setVelocidad] = useState(1);
+  const [ajustes, setAjustes] = useState(false);
   const recRef = useRef<SR | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -74,7 +102,16 @@ export function Assistant({ firstName, userId, isAdmin }: { firstName: string; u
   useEffect(() => {
     const w = window as unknown as { SpeechRecognition?: new () => SR; webkitSpeechRecognition?: new () => SR };
     setMicOk(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
-    try { setVoz(localStorage.getItem("aula-voz") !== "0"); } catch { /* sin almacenamiento */ }
+    try {
+      setVoz(localStorage.getItem("aula-voz") !== "0");
+      setVozNombre(localStorage.getItem("aula-voz-nombre") ?? "");
+      setVelocidad(Number(localStorage.getItem("aula-voz-velocidad") ?? "1") || 1);
+    } catch { /* sin almacenamiento */ }
+    if (!("speechSynthesis" in window)) return;
+    const cargar = () => setVoces(vocesEspanol().sort((a, b) => puntajeVoz(b) - puntajeVoz(a)));
+    cargar();
+    window.speechSynthesis.addEventListener?.("voiceschanged", cargar);
+    return () => window.speechSynthesis.removeEventListener?.("voiceschanged", cargar);
   }, []);
 
   const tourKey = `aula-tour-${userId}`;
@@ -101,18 +138,28 @@ export function Assistant({ firstName, userId, isAdmin }: { firstName: string; u
 
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }); }, [msgs, busy]);
 
-  const hablar = useCallback((text: string) => {
-    if (!voz || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const hablar = useCallback((text: string, forzar = false) => {
+    if ((!voz && !forzar) || typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const synth = window.speechSynthesis;
     synth.cancel();
-    const u = new SpeechSynthesisUtterance(paraVoz(text));
-    const voices = synth.getVoices();
-    const pref = ["es-PA", "es-419", "es-MX", "es-US", "es-CO", "es-ES"];
-    u.voice = pref.map((l) => voices.find((v) => v.lang.replace("_", "-") === l)).find(Boolean) ?? voices.find((v) => v.lang.startsWith("es")) ?? null;
-    u.lang = u.voice?.lang ?? "es-419";
-    u.rate = 1.03;
-    synth.speak(u);
-  }, [voz]);
+    const lista = voces.length ? voces : vocesEspanol().sort((a, b) => puntajeVoz(b) - puntajeVoz(a));
+    const elegida = lista.find((v) => v.name === vozNombre) ?? lista[0] ?? null;
+    // Frases cortas suenan más naturales que un párrafo largo de un tirón
+    const frases = paraVoz(text).split(/(?<=[.!?:])\s+/).filter(Boolean);
+    for (const f of frases) {
+      const u = new SpeechSynthesisUtterance(f);
+      try { u.voice = elegida; } catch { /* si el navegador no acepta la voz, usa la de por defecto */ }
+      u.lang = elegida?.lang ?? "es-419";
+      u.rate = velocidad;
+      u.pitch = 1;
+      synth.speak(u);
+    }
+  }, [voz, voces, vozNombre, velocidad]);
+
+  const guardarVoz = (nombre: string, vel: number) => {
+    setVozNombre(nombre); setVelocidad(vel);
+    try { localStorage.setItem("aula-voz-nombre", nombre); localStorage.setItem("aula-voz-velocidad", String(vel)); } catch { /* sin almacenamiento */ }
+  };
 
   const tourGo = (step: number) => {
     if (step >= steps.length) return;
@@ -217,9 +264,37 @@ export function Assistant({ firstName, userId, isAdmin }: { firstName: string; u
             <span className="asis-avatar" aria-hidden>🤖</span>
             <div className="asis-title"><b>Asistente</b><small>Notas y agenda</small></div>
             <button className="asis-icon" onClick={() => tourGo(1)} title="¿Cómo funciona la app?" aria-label="¿Cómo funciona la app?">❔</button>
+            <button className={`asis-icon ${ajustes ? "is-on" : ""}`} onClick={() => setAjustes((x) => !x)} title="Cambiar la voz" aria-label="Cambiar la voz">🎙️</button>
             <button className={`asis-icon ${voz ? "is-on" : ""}`} onClick={toggleVoz} title={voz ? "Silenciar voz" : "Activar voz"} aria-label={voz ? "Silenciar voz" : "Activar voz"}>{voz ? "🔊" : "🔇"}</button>
             <button className="asis-icon" onClick={() => { setOpen(false); window.speechSynthesis?.cancel(); recRef.current?.abort(); if (msgs.some((x) => x.tour != null)) tourDone(); }} aria-label="Cerrar">✕</button>
           </header>
+
+          {ajustes && (
+            <div className="asis-voces">
+              <b>🎙️ Voz del asistente</b>
+              {voces.length ? (
+                <>
+                  <select value={vozNombre || voces[0]?.name} onChange={(e) => { guardarVoz(e.target.value, velocidad); }} aria-label="Voz">
+                    {voces.map((v) => <option key={v.name + v.lang} value={v.name}>{etiquetaVoz(v)}</option>)}
+                  </select>
+                  <label className="asis-vel">
+                    <span>Velocidad</span>
+                    <input type="range" min={0.8} max={1.3} step={0.05} value={velocidad} onChange={(e) => guardarVoz(vozNombre || voces[0]?.name, Number(e.target.value))} />
+                  </label>
+                  <button className="btn btn-primary btn-sm" onClick={() => hablar(`¡Xopá${firstName ? `, ${firstName}` : ""}! Así sueno yo. Mañana tienes examen de Matemáticas: te sugiero repasar hoy.`, true)}>▶ Probar voz</button>
+                </>
+              ) : <p className="small">Tu navegador no tiene voces en español.</p>}
+              <details>
+                <summary className="small">¿Todas suenan a robot? Consigue una voz más natural</summary>
+                <ul className="small">
+                  <li><b>iPhone:</b> Ajustes → Accesibilidad → Contenido leído → Voces → Español → descarga una voz <b>“Mejorada”</b> o <b>“Premium”</b> (por ejemplo Paulina o Mónica). Luego vuelve aquí y elígela.</li>
+                  <li><b>Android:</b> Ajustes → Accesibilidad → Texto a voz → Motor de Google → Instalar datos de voz → Español → descarga la de <b>alta calidad</b>.</li>
+                  <li><b>Computadora:</b> abre la app en <b>Microsoft Edge</b>: trae voces <b>“Natural”</b> gratis que suenan como una persona.</li>
+                </ul>
+                <p className="small muted">Las marcadas con ✨ son las más naturales que encontré en tu dispositivo.</p>
+              </details>
+            </div>
+          )}
 
           <div className="asis-list" ref={listRef} aria-live="polite">
             {msgs.map((m, i) => (
