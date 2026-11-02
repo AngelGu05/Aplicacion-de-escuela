@@ -8,10 +8,8 @@ export const DEFAULT_PREFS: Omit<GradePrefs, "user_id"> = {
 
 /** Materias del colegio (tal como aparecen en Seduca). */
 export const COMMON_SUBJECTS: { name: string; color: string }[] = [
-  { name: "Asistente de Laboratorio de Contabilidad", color: "#0f766e" },
   { name: "Inglés", color: "#0891b2" },
   { name: "Biología", color: "#059669" },
-  { name: "Consejería", color: "#64748b" },
   { name: "Contabilidad", color: "#4d7c0f" },
   { name: "Educación Física", color: "#ea580c" },
   { name: "Español", color: "#dc2626" },

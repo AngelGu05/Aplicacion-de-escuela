@@ -12,7 +12,7 @@ export const EVENT_KINDS = [
 export const kindInfo = (k: string) => EVENT_KINDS.find((x) => x.value === k) ?? EVENT_KINDS[4];
 
 export const SUBJECT_SUGGESTIONS = [
-  "Asistente de Laboratorio de Contabilidad", "Inglés", "Biología", "Consejería", "Contabilidad", "Educación Física",
+  "Inglés", "Biología", "Contabilidad", "Educación Física",
   "Español", "Física", "Historia", "Informática", "Matemáticas", "Química", "Religión",
 ];
 

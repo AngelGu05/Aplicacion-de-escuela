@@ -61,7 +61,7 @@ export default async function NotasPage() {
       {rows.length === 0 ? (
         <section className="card empty-notas">
           <h2>Empieza agregando tus materias</h2>
-          <p className="muted">Carga de un clic las 13 materias del colegio, ya divididas en <b>Digitación</b>, <b>Apreciación</b> y <b>Bimestral</b>, y calculadas igual que en Seduca.</p>
+          <p className="muted">Carga de un clic las 11 materias del colegio, ya divididas en <b>Digitación</b>, <b>Apreciación</b> y <b>Bimestral</b>, y calculadas igual que en Seduca.</p>
           <form action={addCommonSubjects}><button className="btn btn-primary">✨ Cargar mis materias del colegio</button></form>
         </section>
       ) : (
