@@ -169,3 +169,92 @@ export async function deleteItem(f: FormData) {
   await createAdminClient().from("grade_items").delete().eq("id", id).eq("subject_id", s.id);
   done(s.id);
 }
+
+// ------------------------------------------------------------ Importar desde Seduca
+
+type ImportRow = { name: string; digitacion: (number | null)[]; apreciacion: (number | null)[]; bimestral: (number | null)[] };
+export type ImportState = { error?: string; ok?: string; created?: number; updated?: number } | undefined;
+
+const PARTS = [
+  { key: "digitacion", name: "Digitación", label: "Digitación" },
+  { key: "apreciacion", name: "Apreciación", label: "Apreciación" },
+  { key: "bimestral", name: "Bimestral", label: "Bimestral" },
+] as const;
+
+export async function importGrades(_prev: ImportState, f: FormData): Promise<ImportState> {
+  const profile = await requireUser();
+  const prefs = normPrefs(await getPrefs(profile));
+  const period = Number(str(f, "period"));
+  const pendingBim = f.get("pending_bimestral") === "on";
+  if (!(period >= 1 && period <= prefs.periods)) return { error: "Elige el periodo." };
+
+  let rows: ImportRow[];
+  try {
+    rows = JSON.parse(String(f.get("rows") ?? "[]"));
+  } catch {
+    return { error: "No se pudo leer la tabla." };
+  }
+  if (!Array.isArray(rows) || !rows.length || rows.length > 40) return { error: "No hay notas para importar." };
+  const okScore = (x: unknown) => x === null || (typeof x === "number" && x >= prefs.scale_min && x <= prefs.scale_max);
+  for (const r of rows) {
+    if (typeof r.name !== "string" || !r.name.trim()) return { error: "Hay una materia sin nombre." };
+    for (const p of PARTS) {
+      if (!Array.isArray(r[p.key]) || r[p.key].length > 40 || !r[p.key].every(okScore)) {
+        return { error: `Hay una nota fuera de la escala en ${r.name}.` };
+      }
+    }
+  }
+
+  const db = createAdminClient();
+  const norm = (s: string) => s.replace(/^[*\s]+/, "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  const { data: mine } = await db.from("grade_subjects").select("*").eq("user_id", profile.id).returns<GradeSubject[]>();
+  const byName = new Map((mine ?? []).map((s) => [norm(s.name), s]));
+  let created = 0, updated = 0;
+
+  for (const r of rows) {
+    const name = r.name.replace(/^[*\s]+/, "").trim().slice(0, 50);
+    let subject = byName.get(norm(name));
+    if (!subject) {
+      const color = COMMON_SUBJECTS.find((c) => norm(c.name) === norm(name))?.color ?? "#2563eb";
+      const { data } = await db.from("grade_subjects")
+        .insert({ user_id: profile.id, name, color, method: "ponderado", position: 50 })
+        .select("*").single<GradeSubject>();
+      if (!data) continue;
+      subject = data;
+      byName.set(norm(name), data);
+      created++;
+    } else {
+      updated++;
+      if (subject.method !== "ponderado") await db.from("grade_subjects").update({ method: "ponderado" }).eq("id", subject.id);
+    }
+
+    // Asegura las tres partes (Digitación, Apreciación, Bimestral)
+    const { data: cats } = await db.from("grade_categories").select("id, name").eq("subject_id", subject.id).returns<{ id: string; name: string }[]>();
+    const catId: Record<string, string> = {};
+    for (const p of PARTS) {
+      const found = (cats ?? []).find((c) => norm(c.name) === norm(p.name));
+      if (found) catId[p.key] = found.id;
+      else {
+        const def = DEFAULT_CATEGORIES.find((c) => c.name === p.name)!;
+        const { data } = await db.from("grade_categories").insert({ ...def, subject_id: subject.id }).select("id").single<{ id: string }>();
+        if (data) catId[p.key] = data.id;
+      }
+    }
+
+    // Reemplaza las notas de ese periodo por las de Seduca
+    await db.from("grade_items").delete().eq("subject_id", subject.id).eq("period", period);
+    const items = PARTS.flatMap((p) =>
+      r[p.key].map((score, i) => ({
+        subject_id: subject!.id, period, category_id: catId[p.key], score,
+        name: p.key === "bimestral" ? "Bimestral" : `${p.label} ${i + 1}`,
+      })),
+    );
+    if (pendingBim && !r.bimestral.length) {
+      items.push({ subject_id: subject.id, period, category_id: catId.bimestral, score: null, name: "Bimestral" });
+    }
+    if (items.length) await db.from("grade_items").insert(items);
+  }
+
+  done();
+  return { ok: "Notas importadas.", created, updated };
+}

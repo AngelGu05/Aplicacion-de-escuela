@@ -47,6 +47,9 @@ export default async function NotasPage() {
         <span className="hero-kicker">🔒 Solo tú ves tus notas</span>
         <h1>Mis notas 📊</h1>
         <p>Anota tus calificaciones y te digo cuánto necesitas para pasar o para llegar a tu meta.</p>
+        <div className="hero-actions">
+          <Link href="/notas/importar" className="btn btn-primary">📋 Importar desde Seduca</Link>
+        </div>
       </section>
 
       {rows.length > 0 && (
@@ -62,7 +65,10 @@ export default async function NotasPage() {
         <section className="card empty-notas">
           <h2>Empieza agregando tus materias</h2>
           <p className="muted">Carga de un clic las 11 materias del colegio, ya divididas en <b>Digitación</b>, <b>Apreciación</b> y <b>Bimestral</b>, y calculadas igual que en Seduca.</p>
-          <form action={addCommonSubjects}><button className="btn btn-primary">✨ Cargar mis materias del colegio</button></form>
+          <div className="hero-actions center">
+            <Link href="/notas/importar" className="btn btn-primary">📋 Importar mis notas de Seduca</Link>
+            <form action={addCommonSubjects}><button className="btn">✨ Solo cargar las materias</button></form>
+          </div>
         </section>
       ) : (
         <div className="grade-grid">
