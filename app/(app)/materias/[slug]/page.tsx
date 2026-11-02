@@ -47,7 +47,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ slug: 
                 </div>
                 <h2>{locked && "🔒 "}{l.title}</h2>
                 {l.description && <p>{l.description}</p>}
-                {locked && <p className="locked-note">Contenido Premium — pídele acceso a tu profesor.</p>}
+                {locked && <p className="locked-note">Contenido Premium — pídele acceso al administrador.</p>}
               </>
             );
             return (

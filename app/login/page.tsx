@@ -14,7 +14,7 @@ const MESSAGES: Record<string, { kind: "info" | "error"; text: string }> = {
     kind: "info",
     text: "Tu sesión terminó. Si no la cerraste tú, es posible que tu cuenta se haya abierto en otro dispositivo.",
   },
-  suspendida: { kind: "error", text: "Esta cuenta está suspendida. Habla con tu profesor." },
+  suspendida: { kind: "error", text: "Esta cuenta está suspendida. Habla con el administrador." },
   "sin-acceso": { kind: "error", text: "Esta cuenta no tiene acceso a la plataforma." },
   creado: { kind: "info", text: "Cuenta de administrador creada. Ya puedes iniciar sesión." },
 };
@@ -42,7 +42,7 @@ export default async function LoginPage({
         <p className="muted">Física · Química · Biología</p>
         {message && <p className={`alert alert-${message.kind}`}>{message.text}</p>}
         <LoginForm next={next} />
-        <p className="fine-print">¿No tienes cuenta? Pídesela a tu profesor.</p>
+        <p className="fine-print">¿No tienes cuenta? Pídesela al administrador.</p>
       </div>
     </main>
   );

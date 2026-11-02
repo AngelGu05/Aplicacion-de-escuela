@@ -10,6 +10,9 @@ export type Profile = {
   active_session_id: string | null;
   last_login_at: string | null;
   created_at: string;
+  classroom_id: string | null;
+  can_edit_agenda: boolean;
+  calendar_token: string;
 };
 
 export type Subject = {
@@ -40,3 +43,62 @@ export type Lesson = {
 export type LessonSummary = Omit<Lesson, "content">;
 export const LESSON_SUMMARY_COLUMNS =
   "id, subject_id, title, description, kind, is_premium, published, created_at, updated_at";
+
+// ---------------------------------------------------------------- Agenda
+
+export type Classroom = { id: string; name: string };
+
+export type EventKind = "examen" | "tarea" | "proyecto" | "actividad" | "otro";
+export type EventScope = "salon" | "personal";
+
+export type AgendaEvent = {
+  id: string;
+  scope: EventScope;
+  classroom_id: string | null;
+  owner_id: string;
+  title: string;
+  kind: EventKind;
+  subject: string | null;
+  event_date: string; // YYYY-MM-DD
+  event_time: string | null; // HH:MM:SS
+  description: string | null;
+  remind_days: number;
+};
+
+/** Evento tal como lo ve un alumno concreto (con su estado personal). */
+export type MyEvent = AgendaEvent & { done: boolean; hidden: boolean; canEdit: boolean };
+
+// ---------------------------------------------------------------- Notas
+
+export type GradePrefs = {
+  user_id: string;
+  scale_min: number;
+  scale_max: number;
+  pass_mark: number;
+  decimals: number;
+  periods: number;
+  period_label: string;
+};
+
+export type GradeMethod = "promedio" | "ponderado";
+
+export type GradeSubject = {
+  id: string;
+  user_id: string;
+  name: string;
+  color: string;
+  target: number | null;
+  method: GradeMethod;
+  position: number;
+};
+
+export type GradeCategory = { id: string; subject_id: string; name: string; weight: number; position: number };
+
+export type GradeItem = {
+  id: string;
+  subject_id: string;
+  category_id: string | null;
+  period: number;
+  name: string;
+  score: number | null;
+};

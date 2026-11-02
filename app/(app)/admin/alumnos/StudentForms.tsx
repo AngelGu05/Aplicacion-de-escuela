@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { createStudent, resetPassword } from "../actions";
+import { createClassroom, createStudent, resetPassword } from "../actions";
 import type { FormState } from "@/app/login/actions";
 
 function randomPassword() {
@@ -10,7 +10,7 @@ function randomPassword() {
   return Array.from(bytes, (b) => chars[b % chars.length]).join("");
 }
 
-export function NewStudentForm() {
+export function NewStudentForm({ classrooms }: { classrooms: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(createStudent, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
@@ -33,6 +33,15 @@ export function NewStudentForm() {
           <button type="button" className="btn btn-sm" onClick={() => passRef.current && (passRef.current.value = randomPassword())}>Generar</button>
         </div>
       </label>
+      {classrooms.length > 0 && (
+        <label className="field">
+          <span>Salón</span>
+          <select name="classroom_id" defaultValue={state?.values?.classroom_id ?? ""}>
+            <option value="">Sin salón</option>
+            {classrooms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </label>
+      )}
       <label className="check"><input type="checkbox" name="premium" /> Darle acceso Premium</label>
       {state?.error && <p className="alert alert-error">{state.error}</p>}
       {state?.ok && <p className="alert alert-info">{state.ok}</p>}
@@ -50,6 +59,20 @@ export function ResetPasswordForm({ id }: { id: string }) {
       <input ref={passRef} name="password" placeholder="Nueva contraseña" minLength={8} required autoComplete="off" />
       <button type="button" className="btn btn-sm" onClick={() => passRef.current && (passRef.current.value = randomPassword())}>Generar</button>
       <button className="btn btn-sm btn-primary" disabled={pending}>Cambiar</button>
+      {state?.error && <span className="small text-error">{state.error}</span>}
+      {state?.ok && <span className="small text-ok">{state.ok}</span>}
+    </form>
+  );
+}
+
+export function NewClassroomForm() {
+  const [state, action, pending] = useActionState<FormState, FormData>(createClassroom, undefined);
+  const ref = useRef<HTMLFormElement>(null);
+  useEffect(() => { if (state?.ok) ref.current?.reset(); }, [state]);
+  return (
+    <form ref={ref} action={action} className="inline-form">
+      <input name="name" placeholder="Nuevo salón, ej. 10°A" maxLength={30} required />
+      <button className="btn btn-sm btn-primary" disabled={pending}>Crear salón</button>
       {state?.error && <span className="small text-error">{state.error}</span>}
       {state?.ok && <span className="small text-ok">{state.ok}</span>}
     </form>

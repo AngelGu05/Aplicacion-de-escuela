@@ -1,10 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Profile } from "@/lib/types";
+import type { Classroom, Profile } from "@/lib/types";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { deleteStudent, forceLogout, setStudentFlag } from "../actions";
-import { NewStudentForm, ResetPasswordForm } from "./StudentForms";
+import { deleteClassroom, deleteStudent, forceLogout, setStudentClassroom, setStudentFlag } from "../actions";
+import { NewClassroomForm, NewStudentForm, ResetPasswordForm } from "./StudentForms";
 
-function FlagButton({ id, flag, value, on, off }: { id: string; flag: "premium" | "disabled"; value: boolean; on: string; off: string }) {
+function FlagButton({ id, flag, value, on, off }: { id: string; flag: "premium" | "disabled" | "can_edit_agenda"; value: boolean; on: string; off: string }) {
   return (
     <form action={setStudentFlag}>
       <input type="hidden" name="id" value={id} />
@@ -20,6 +20,8 @@ function fmt(date: string | null) {
 }
 
 export default async function StudentsPage() {
+  const { data: classrooms } = await createAdminClient().from("classrooms").select("id, name").order("name").returns<Classroom[]>();
+  const rooms = classrooms ?? [];
   const { data: students } = await createAdminClient()
     .from("profiles")
     .select("*")
@@ -29,7 +31,23 @@ export default async function StudentsPage() {
 
   return (
     <>
-      <NewStudentForm />
+      <section className="card">
+        <h2>Salones</h2>
+        <p className="muted small">Cada alumno ve en su agenda los eventos de su salón. Los <b>editores</b> pueden publicar eventos para su propio salón.</p>
+        <div className="room-chips">
+          {rooms.map((r) => (
+            <form key={r.id} action={deleteClassroom} className="room-chip">
+              <input type="hidden" name="id" value={r.id} />
+              <span>{r.name}</span>
+              <ConfirmButton message={`¿Borrar el salón ${r.name}? Sus eventos también se borrarán.`} className="room-x">✕</ConfirmButton>
+            </form>
+          ))}
+          {!rooms.length && <span className="muted small">Todavía no hay salones.</span>}
+        </div>
+        <NewClassroomForm />
+      </section>
+
+      <NewStudentForm classrooms={rooms} />
 
       <h2 className="section-title">Alumnos ({students?.length ?? 0})</h2>
       {!students?.length ? (
@@ -38,7 +56,7 @@ export default async function StudentsPage() {
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Alumno</th><th>Sesión</th><th>Acceso</th><th>Estado</th><th>Acciones</th></tr>
+              <tr><th>Alumno</th><th>Sesión</th><th>Salón</th><th>Acceso</th><th>Agenda</th><th>Estado</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               {students.map((s) => (
@@ -51,7 +69,18 @@ export default async function StudentsPage() {
                     {s.active_session_id ? <span className="dot dot-on">Conectado</span> : <span className="dot">Sin sesión</span>}
                     <div className="muted small">Último ingreso: {fmt(s.last_login_at)}</div>
                   </td>
+                  <td>
+                    <form action={setStudentClassroom} className="room-select">
+                      <input type="hidden" name="id" value={s.id} />
+                      <select name="classroom_id" defaultValue={s.classroom_id ?? ""} aria-label="Salón">
+                        <option value="">—</option>
+                        {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </select>
+                      <button className="btn btn-ghost btn-sm" title="Guardar salón">✓</button>
+                    </form>
+                  </td>
                   <td><FlagButton id={s.id} flag="premium" value={s.premium} on="Premium" off="Básico" /></td>
+                  <td><FlagButton id={s.id} flag="can_edit_agenda" value={s.can_edit_agenda} on="Editor" off="Normal" /></td>
                   <td><FlagButton id={s.id} flag="disabled" value={s.disabled} on="Suspendido" off="Activo" /></td>
                   <td>
                     <details className="actions-menu">

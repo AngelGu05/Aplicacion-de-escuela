@@ -85,7 +85,9 @@ export async function createStudent(_prev: FormState, formData: FormData): Promi
   const email = str(formData, "email").toLowerCase();
   const password = String(formData.get("password") ?? "");
   const premium = formData.get("premium") === "on";
-  const values = { full_name: fullName, email };
+  const classroomRaw = String(formData.get("classroom_id") ?? "");
+  const classroom_id = UUID.test(classroomRaw) ? classroomRaw : null;
+  const values = { full_name: fullName, email, classroom_id: classroom_id ?? "" };
   if (!email) return { error: "Escribe el correo del alumno.", values };
   if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres.", values };
 
@@ -100,7 +102,7 @@ export async function createStudent(_prev: FormState, formData: FormData): Promi
 
   const { error: profileError } = await db
     .from("profiles")
-    .insert({ id: data.user.id, email, full_name: fullName || null, role: "student", premium });
+    .insert({ id: data.user.id, email, full_name: fullName || null, role: "student", premium, classroom_id });
   if (profileError) {
     await db.auth.admin.deleteUser(data.user.id);
     return { error: "No se pudo guardar el perfil: " + profileError.message, values };
@@ -120,7 +122,7 @@ async function targetStudent(formData: FormData) {
 export async function setStudentFlag(formData: FormData) {
   const id = await targetStudent(formData);
   const flag = str(formData, "flag");
-  if (!id || (flag !== "premium" && flag !== "disabled")) return;
+  if (!id || (flag !== "premium" && flag !== "disabled" && flag !== "can_edit_agenda")) return;
   const value = str(formData, "value") === "true";
   const update: Record<string, unknown> = { [flag]: value };
   if (flag === "disabled" && value) update.active_session_id = null; // suspender = sacar ya
@@ -151,5 +153,33 @@ export async function deleteStudent(formData: FormData) {
   const id = await targetStudent(formData);
   if (!id) return;
   await createAdminClient().auth.admin.deleteUser(id); // el perfil se borra en cascada
+  revalidatePath("/admin/alumnos");
+}
+
+// ---------------------------------------------------------------- Salones
+
+export async function createClassroom(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const name = str(formData, "name").slice(0, 30);
+  if (!name) return { error: "Escribe el nombre del salón (ej. 10°A)." };
+  const { error } = await createAdminClient().from("classrooms").insert({ name });
+  if (error) return { error: error.message.includes("duplicate") ? "Ya existe un salón con ese nombre." : error.message };
+  revalidatePath("/admin/alumnos");
+  return { ok: `Salón ${name} creado.` };
+}
+
+export async function deleteClassroom(formData: FormData) {
+  await requireAdmin();
+  const id = str(formData, "id");
+  if (!UUID.test(id)) return;
+  await createAdminClient().from("classrooms").delete().eq("id", id);
+  revalidatePath("/admin/alumnos");
+}
+
+export async function setStudentClassroom(formData: FormData) {
+  const id = await targetStudent(formData);
+  if (!id) return;
+  const raw = str(formData, "classroom_id");
+  await createAdminClient().from("profiles").update({ classroom_id: UUID.test(raw) ? raw : null }).eq("id", id);
   revalidatePath("/admin/alumnos");
 }

@@ -7,6 +7,8 @@ Plataforma privada para publicar lecciones de **Física, Química y Biología**.
 - Las lecciones **no se pueden descargar** ni abrir fuera de la plataforma, y llevan una **marca de agua con el correo** de quien las ve.
 - Cada lección puede ser **Libre** o **Premium**, y cada alumno puede tener acceso **Premium** o no.
 - Hay un **registro de accesos** con alertas de posibles cuentas compartidas.
+- **Agenda** personal de cada alumno, que ya trae los exámenes y tareas de **su salón**; cada uno agrega lo suyo, marca como hecho, oculta, y recibe recordatorios (también en el calendario del celular).
+- **Notas**: cada alumno anota sus calificaciones (privadas) y la página calcula cuánto necesita para pasar o llegar a su meta.
 
 Tecnología: Next.js (en Vercel) + Supabase (cuentas y base de datos).
 
@@ -18,7 +20,8 @@ Tecnología: Next.js (en Vercel) + Supabase (cuentas y base de datos).
 
 1. En [supabase.com](https://supabase.com), abre tu proyecto.
 2. Ve a **SQL Editor → New query**, pega todo el contenido de [`supabase/schema.sql`](supabase/schema.sql) y pulsa **Run**.
-3. Ve a **Authentication → Sign In / Providers** y **desactiva "Allow new users to sign up"**.
+3. Abre otra **New query**, pega [`supabase/002_agenda_y_notas.sql`](supabase/002_agenda_y_notas.sql) y pulsa **Run** (agenda y notas).
+4. Ve a **Authentication → Sign In / Providers** y **desactiva "Allow new users to sign up"**.
    Así nadie puede crearse una cuenta por su cuenta; solo tú desde el panel.
 
 ### 2. Copia las claves de Supabase
@@ -53,6 +56,8 @@ Esa página **desaparece** en cuanto existe un administrador, así que hazlo jus
 **Crear alumnos:** Panel → Alumnos → escribe nombre, correo y contraseña (o pulsa *Generar*) → Crear cuenta. Pásale al alumno su correo y contraseña.
 
 **Bloquear contenido:** en la lista de lecciones, pulsa **Libre / Premium** para cambiarla. En Alumnos, pulsa **Básico / Premium** para dar o quitar acceso.
+
+**Salones y agenda:** Panel → Alumnos → crea los salones (10°A, 10°B…) y asigna cada alumno a su salón. Lo que publiques en la Agenda para un salón le aparece a todos sus alumnos. Si marcas a un alumno como **Editor**, él también puede publicar eventos para su propio salón.
 
 **Si un alumno se queja de que lo sacan:** su cuenta se está usando en otro dispositivo. Desde *Opciones* puedes cambiarle la contraseña, y eso cierra todas sus sesiones.
 

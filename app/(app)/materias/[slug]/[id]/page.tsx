@@ -31,7 +31,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
       </div>
       {locked ? (
         <div className="container">
-          <p className="empty">🔒 Esta lección es contenido Premium. Pídele acceso a tu profesor.</p>
+          <p className="empty">🔒 Esta lección es contenido Premium. Pídele acceso al administrador.</p>
         </div>
       ) : (
         <ProtectedFrame lessonId={lesson.id} title={lesson.title} />

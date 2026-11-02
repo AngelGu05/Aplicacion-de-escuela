@@ -34,7 +34,7 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   }
   if (profile.disabled) {
     await supabase.auth.signOut({ scope: "local" });
-    return { error: "Esta cuenta está suspendida. Habla con tu profesor.", values };
+    return { error: "Esta cuenta está suspendida. Habla con el administrador.", values };
   }
 
   // Sesión única: este dispositivo pasa a ser el ÚNICO válido para la cuenta.
