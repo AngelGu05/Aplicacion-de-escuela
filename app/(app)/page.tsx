@@ -20,9 +20,12 @@ export default async function HomePage() {
 
   return (
     <main className="container">
-      <section className="page-head">
-        <h1>{firstName ? `Hola, ${firstName}` : "Hola"}</h1>
-        <p className="muted">Elige una materia para ver las lecciones.</p>
+      <section className="hero">
+        <span className="hero-kicker">Aula de Ciencias</span>
+        <h1>
+          {firstName ? <>Hola, <span className="hero-name">{firstName}</span> 👋</> : "¡Hola! 👋"}
+        </h1>
+        <p>¿Qué vamos a aprender hoy? Elige una materia para ver sus lecciones.</p>
       </section>
 
       <div className="subject-grid">
@@ -30,10 +33,14 @@ export default async function HomePage() {
           const n = counts.get(s.id) ?? 0;
           return (
             <Link key={s.id} href={`/materias/${s.slug}`} className="subject-card" style={{ "--accent": s.color } as React.CSSProperties}>
+              <span className="subject-watermark" aria-hidden>{ICONS[s.slug] ?? "📘"}</span>
               <span className="subject-icon" aria-hidden>{ICONS[s.slug] ?? "📘"}</span>
               <h2>{s.name}</h2>
               {s.description && <p>{s.description}</p>}
-              <span className="subject-count">{n === 1 ? "1 publicación" : `${n} publicaciones`}</span>
+              <span className="subject-foot">
+                <span className="subject-count">{n === 1 ? "1 publicación" : `${n} publicaciones`}</span>
+                <span className="subject-go" aria-hidden>Entrar →</span>
+              </span>
             </Link>
           );
         })}

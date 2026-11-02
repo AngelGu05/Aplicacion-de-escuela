@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ScienceBackdrop } from "@/components/ScienceBackdrop";
 
 export const metadata: Metadata = {
   title: { default: "Aula de Ciencias", template: "%s · Aula de Ciencias" },
@@ -19,7 +20,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <ScienceBackdrop />
+        {children}
+      </body>
     </html>
   );
 }

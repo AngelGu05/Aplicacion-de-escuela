@@ -181,3 +181,138 @@ a.lesson-item:hover { border-color: var(--accent); transform: translateY(-1px); 
 .danger-zone { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); display: grid; gap: 8px; justify-items: start; max-width: 760px; }
 .danger-zone p { margin: 0; }
 .flag-list { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 8px; }
+
+/* =====================================================================
+   Fondo decorativo y estilo vistoso
+   ===================================================================== */
+:root {
+  --fis: #2563eb;
+  --qui: #d97706;
+  --bio: #059669;
+  --deco-opacity: .13;
+  --blob-opacity: .22;
+  --grid-line: rgba(37, 99, 235, .06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fis: #6c9bff;
+    --qui: #f5a524;
+    --bio: #34d399;
+    --deco-opacity: .16;
+    --blob-opacity: .18;
+    --grid-line: rgba(140, 170, 255, .05);
+  }
+}
+
+body { position: relative; min-height: 100dvh; }
+body > *:not(.backdrop) { position: relative; z-index: 1; }
+.topbar { z-index: 10; }
+
+.backdrop { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.bd-grid {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+}
+.bd-blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: var(--blob-opacity); animation: blob 22s ease-in-out infinite alternate; }
+.bd-blob-1 { width: 46vmax; height: 46vmax; background: var(--fis); top: -16vmax; left: -12vmax; }
+.bd-blob-2 { width: 40vmax; height: 40vmax; background: var(--qui); top: 30%; right: -16vmax; animation-delay: -7s; }
+.bd-blob-3 { width: 44vmax; height: 44vmax; background: var(--bio); bottom: -20vmax; left: 20%; animation-delay: -14s; }
+@keyframes blob {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(4vmax, -3vmax) scale(1.08); }
+  100% { transform: translate(-3vmax, 3vmax) scale(.95); }
+}
+
+.bd-item { position: absolute; opacity: var(--deco-opacity); animation: floaty 14s ease-in-out infinite; }
+.bd-item svg { display: block; width: 100%; height: auto; }
+.bd-fis { color: var(--fis); }
+.bd-qui { color: var(--qui); }
+.bd-bio { color: var(--bio); }
+.bd-formula { font: italic 600 clamp(15px, 2vw, 22px)/1 "Cambria Math", "Times New Roman", serif; white-space: nowrap; }
+@keyframes floaty {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-18px) rotate(6deg); }
+}
+@media (max-width: 640px) {
+  .bd-item { transform-origin: center; scale: .7; }
+  .bd-item:nth-child(n+11) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bd-item, .bd-blob { animation: none; }
+}
+
+/* En la página de una lección, el fondo queda detrás del marco */
+.lesson-page { position: relative; z-index: 1; }
+
+/* ---------- Tarjetas y superficies con efecto vidrio ---------- */
+.auth-page { background: transparent; }
+.auth-card, .card, .lesson-item, .table-wrap, .empty {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ---------- Bienvenida ---------- */
+.hero { margin: 12px 0 28px; display: grid; gap: 8px; }
+.hero-kicker {
+  justify-self: start; font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 999px; color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+}
+.hero h1 { font-size: clamp(2rem, 6vw, 3rem); letter-spacing: -.03em; }
+.hero-name {
+  background: linear-gradient(90deg, var(--fis), var(--bio) 55%, var(--qui));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hero p { margin: 0; color: var(--muted); font-size: 1.05rem; }
+
+/* ---------- Tarjetas de materias más vistosas ---------- */
+.subject-grid { gap: 20px; }
+.subject-card {
+  min-height: 210px;
+  padding: 24px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+    color-mix(in srgb, var(--surface) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.subject-card::before { height: 5px; background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 40%, #fff)); }
+.subject-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -18px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.subject-icon {
+  width: 64px; height: 64px; font-size: 36px; border-radius: 18px;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+  transition: transform .3s ease;
+}
+.subject-card:hover .subject-icon { transform: rotate(-8deg) scale(1.08); }
+.subject-watermark {
+  position: absolute; right: -14px; bottom: -22px; font-size: 130px; line-height: 1;
+  opacity: .1; transform: rotate(-12deg); pointer-events: none; transition: transform .4s ease, opacity .3s;
+}
+.subject-card:hover .subject-watermark { transform: rotate(-4deg) scale(1.06); opacity: .16; }
+.subject-foot { margin-top: auto; padding-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.subject-foot .subject-count { margin: 0; }
+.subject-go {
+  font-size: .85rem; font-weight: 700; color: var(--accent);
+  padding: 5px 12px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, transparent);
+  transition: transform .2s ease;
+}
+.subject-card:hover .subject-go { transform: translateX(3px); }
+.subject-card { display: flex; flex-direction: column; }
+
+/* Encabezado de cada materia con su color */
+.accent-bar h1 { color: var(--accent); }
+.page-head.accent-bar {
+  padding: 18px 20px; border-left-width: 6px; border-radius: 0 var(--radius) var(--radius) 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 80%);
+}
