@@ -7,6 +7,7 @@ import { createAuthClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
 import type { Profile } from "@/lib/types";
+import { safeNext } from "@/lib/next-path";
 
 export type FormState = { error?: string; ok?: string; values?: Record<string, string> } | undefined;
 
@@ -49,7 +50,7 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, sid, sessionCookieOptions);
 
-  redirect(profile.role === "admin" ? "/admin" : "/");
+  redirect(safeNext(formData.get("next")) ?? (profile.role === "admin" ? "/admin" : "/"));
 }
 
 export async function logout() {

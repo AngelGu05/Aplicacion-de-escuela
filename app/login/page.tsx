@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSessionState } from "@/lib/auth";
 import { LoginForm } from "./LoginForm";
+import { safeNext } from "@/lib/next-path";
 
 export const metadata = { title: "Iniciar sesión" };
 
@@ -21,12 +22,14 @@ const MESSAGES: Record<string, { kind: "info" | "error"; text: string }> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ motivo?: string }>;
+  searchParams: Promise<{ motivo?: string; next?: string }>;
 }) {
-  const state = await getSessionState();
-  if (state.status === "ok") redirect(state.profile.role === "admin" ? "/admin" : "/");
+  const { motivo, next: rawNext } = await searchParams;
+  const next = safeNext(rawNext) ?? undefined;
 
-  const { motivo } = await searchParams;
+  const state = await getSessionState();
+  if (state.status === "ok") redirect(next ?? (state.profile.role === "admin" ? "/admin" : "/"));
+
   const message = motivo ? MESSAGES[motivo] : undefined;
 
   return (
@@ -38,7 +41,7 @@ export default async function LoginPage({
         </div>
         <p className="muted">Física · Química · Biología</p>
         {message && <p className={`alert alert-${message.kind}`}>{message.text}</p>}
-        <LoginForm />
+        <LoginForm next={next} />
         <p className="fine-print">¿No tienes cuenta? Pídesela a tu profesor.</p>
       </div>
     </main>

@@ -1,5 +1,6 @@
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { PATH_HEADER, safeNext } from "./next-path";
 import { redirect } from "next/navigation";
 import { createAuthClient } from "./supabase/server";
 import { createAdminClient } from "./supabase/admin";
@@ -67,7 +68,11 @@ export function loginUrlFor(state: SessionState) {
 
 export async function requireUser(): Promise<Profile> {
   const state = await getSessionState();
-  if (state.status !== "ok") redirect(loginUrlFor(state));
+  if (state.status !== "ok") {
+    const next = safeNext((await headers()).get(PATH_HEADER));
+    const url = loginUrlFor(state);
+    redirect(next ? `${url}${url.includes("?") ? "&" : "?"}next=${encodeURIComponent(next)}` : url);
+  }
   return state.profile;
 }
 

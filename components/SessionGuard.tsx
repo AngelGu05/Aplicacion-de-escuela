@@ -16,7 +16,10 @@ export function SessionGuard() {
         const data = (await res.json()) as { ok: boolean; redirect?: string };
         if (!data.ok && !stopped) {
           stopped = true;
-          window.location.replace(data.redirect ?? "/login");
+          const target = data.redirect ?? "/login";
+          const here = window.location.pathname;
+          const next = here !== "/" ? `${target.includes("?") ? "&" : "?"}next=${encodeURIComponent(here)}` : "";
+          window.location.replace(target + next);
         }
       } catch {
         // Sin conexión: se vuelve a intentar en el siguiente ciclo.
