@@ -4,9 +4,26 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type Msg = { from: "yo" | "bot"; text: string; links?: { href: string; label: string }[]; action?: { type: "abrir"; href: string; label: string } };
+type Msg = {
+  from: "yo" | "bot"; text: string;
+  links?: { href: string; label: string }[];
+  action?: { type: "abrir"; href: string; label: string };
+  tour?: number; // paso del recorrido de bienvenida
+};
 
-const SUGERENCIAS = ["¿Qué tengo mañana?", "¿Cuánto necesito pa' pasar mate?", "¿Qué estudio hoy?", "¿Cómo voy en general?", "¿Qué día cae el 15?", "¿Qué tengo la otra semana?"];
+/** Recorrido de bienvenida: explica la app en pasos cortos. */
+const TOUR = (name: string, isAdmin: boolean): { text: string; link?: { href: string; label: string } }[] => [
+  { text: `¡Xopá${name ? `, ${name}` : ""}! 👋 Bienvenido a **Aula de Ciencias**. ¿Te explico rápido cómo funciona? Es menos de un minuto. 😉` },
+  { text: "📚 **Materias**: aquí están las lecciones interactivas de **Física, Química y Biología**. Solo se ven dentro de la app y llevan tu correo como marca de agua. Ojo: tu cuenta solo puede estar abierta en **un dispositivo a la vez**; si entras en otro, se cierra en el primero.", link: { href: "/", label: "Ver materias" } },
+  { text: "📅 **Agenda**: los exámenes y tareas de **tu salón** te aparecen solos. Tú puedes agregar lo tuyo, marcar cosas como **hechas** y ocultar lo que no te sirva. El número rojo 🔔 del menú te avisa lo que viene. Tip: en la agenda puedes **suscribir tu celular** para que te lleguen recordatorios.", link: { href: "/agenda", label: "Abrir agenda" } },
+  { text: "📊 **Notas**: tus materias ya están cargadas con **Digitación, Apreciación y Bimestral**, y se calculan igual que en Seduca. Si dejas una nota **vacía** (por ejemplo el bimestral), te digo **cuánto necesitas** para pasar o para tu meta. Solo tú ves tus notas. 🔒", link: { href: "/notas", label: "Abrir mis notas" } },
+  { text: "📋 **Importar desde Seduca**: en vez de copiar nota por nota, abre Seduca en la compu, selecciona tu tabla de calificaciones, cópiala y pégala aquí. ¡Se llena todo solo!", link: { href: "/notas/importar", label: "Importar mis notas" } },
+  { text: "🤖 **Y yo**: pregúntame lo que quieras de tu agenda y tus notas, escribiendo o con el 🎤. Por ejemplo: *“¿Qué tengo mañana?”*, *“¿Cuánto necesito pa' pasar mate?”* o *“¿Qué estudio hoy?”*. Te hablo en panameño, fren. 🇵🇦" +
+      (isAdmin ? " Como administrador, en **Panel** manejas lecciones, alumnos, salones y las preguntas que no entendí." : "") },
+  { text: "¡Eso es todo! 🎉 Si quieres repetir esto, pregúntame *“¿cómo funciona la app?”* o toca el ❔ de arriba. ¿Qué quieres saber ahora?" },
+];
+
+const SUGERENCIAS = ["¿Cómo funciona la app?", "¿Qué tengo mañana?", "¿Cuánto necesito pa' pasar mate?", "¿Qué estudio hoy?", "¿Cómo voy en general?", "¿Qué día cae el 15?", "¿Qué tengo la otra semana?"];
 
 /** Muestra **negritas** y *cursivas* sin usar HTML. */
 function Rich({ text }: { text: string }) {
@@ -40,7 +57,7 @@ type SR = {
   onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null;
 };
 
-export function Assistant({ firstName }: { firstName: string }) {
+export function Assistant({ firstName, userId, isAdmin }: { firstName: string; userId: string; isAdmin: boolean }) {
   const path = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -60,11 +77,27 @@ export function Assistant({ firstName }: { firstName: string }) {
     try { setVoz(localStorage.getItem("aula-voz") !== "0"); } catch { /* sin almacenamiento */ }
   }, []);
 
+  const tourKey = `aula-tour-${userId}`;
+  const steps = TOUR(firstName, isAdmin);
+
+  // La primera vez, el asistente se abre solo y ofrece el recorrido
+  useEffect(() => {
+    let seen = true;
+    try { seen = localStorage.getItem(tourKey) === "1"; } catch { /* sin almacenamiento: no insistir */ }
+    if (!seen && !/^\/materias\/[^/]+\/[^/]+/.test(window.location.pathname)) {
+      const t = setTimeout(() => { setOpen(true); setMsgs([{ from: "bot", text: steps[0].text, tour: 0 }]); }, 900);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourKey]);
+
   useEffect(() => {
     if (open && !msgs.length) {
       setMsgs([{ from: "bot", text: `¡Xopá${firstName ? `, ${firstName}` : ""}! 👋 Soy tu asistente. Pregúntame por tu **agenda** o tus **notas**, escribiendo o con el 🎤.` }]);
     }
   }, [open, msgs.length, firstName]);
+
+  const tourDone = () => { try { localStorage.setItem(tourKey, "1"); } catch { /* sin almacenamiento */ } };
 
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }); }, [msgs, busy]);
 
@@ -81,6 +114,18 @@ export function Assistant({ firstName }: { firstName: string }) {
     synth.speak(u);
   }, [voz]);
 
+  const tourGo = (step: number) => {
+    if (step >= steps.length) return;
+    const st = steps[step];
+    setMsgs((m) => [...m.map((x) => ({ ...x, tour: undefined })), { from: "bot", text: st.text, tour: step, links: st.link ? [st.link] : undefined }]);
+    hablar(st.text);
+    if (step === steps.length - 1) tourDone();
+  };
+  const tourSkip = () => {
+    tourDone();
+    setMsgs((m) => [...m.map((x) => ({ ...x, tour: undefined })), { from: "bot", text: "Ofi 👍 Cuando quieras, pregúntame *“¿cómo funciona la app?”*. ¿En qué te ayudo?" }]);
+  };
+
   const preguntar = useCallback(async (q: string) => {
     const text = q.trim();
     if (!text || busy) return;
@@ -90,8 +135,15 @@ export function Assistant({ firstName }: { firstName: string }) {
     try {
       const res = await fetch("/api/asistente", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q: text }) });
       if (res.status === 401) { window.location.href = "/login"; return; }
-      const r = (await res.json()) as Msg & { understood: boolean };
-      setMsgs((m) => [...m, { from: "bot", text: r.text, links: r.links, action: r.action }]);
+      const r = (await res.json()) as Omit<Msg, "action"> & { understood: boolean; action?: { type: "abrir"; href: string; label: string } | { type: "tour" } };
+      if (r.action?.type === "tour") {
+        const st = TOUR(firstName, isAdmin)[1];
+        setMsgs((m) => [...m, { from: "bot", text: r.text }, { from: "bot", text: st.text, tour: 1, links: st.link ? [st.link] : undefined }]);
+        hablar(`${r.text} ${st.text}`);
+        return;
+      }
+      const action = r.action?.type === "abrir" ? r.action : undefined;
+      setMsgs((m) => [...m, { from: "bot", text: r.text, links: r.links, action }]);
       hablar(r.text);
       if (/marqué como hecha/i.test(r.text)) router.refresh();
     } catch {
@@ -99,7 +151,7 @@ export function Assistant({ firstName }: { firstName: string }) {
     } finally {
       setBusy(false);
     }
-  }, [busy, hablar, router]);
+  }, [busy, hablar, router, firstName, isAdmin]);
 
   const escuchar = () => {
     const w = window as unknown as { SpeechRecognition?: new () => SR; webkitSpeechRecognition?: new () => SR };
@@ -164,14 +216,30 @@ export function Assistant({ firstName }: { firstName: string }) {
           <header className="asis-head">
             <span className="asis-avatar" aria-hidden>🤖</span>
             <div className="asis-title"><b>Asistente</b><small>Notas y agenda</small></div>
+            <button className="asis-icon" onClick={() => tourGo(1)} title="¿Cómo funciona la app?" aria-label="¿Cómo funciona la app?">❔</button>
             <button className={`asis-icon ${voz ? "is-on" : ""}`} onClick={toggleVoz} title={voz ? "Silenciar voz" : "Activar voz"} aria-label={voz ? "Silenciar voz" : "Activar voz"}>{voz ? "🔊" : "🔇"}</button>
-            <button className="asis-icon" onClick={() => { setOpen(false); window.speechSynthesis?.cancel(); recRef.current?.abort(); }} aria-label="Cerrar">✕</button>
+            <button className="asis-icon" onClick={() => { setOpen(false); window.speechSynthesis?.cancel(); recRef.current?.abort(); if (msgs.some((x) => x.tour != null)) tourDone(); }} aria-label="Cerrar">✕</button>
           </header>
 
           <div className="asis-list" ref={listRef} aria-live="polite">
             {msgs.map((m, i) => (
               <div key={i} className={`asis-msg ${m.from === "yo" ? "is-me" : "is-bot"}`}>
                 <p><Rich text={m.text} /></p>
+                {m.tour != null && i === msgs.length - 1 && (
+                  <div className="asis-links">
+                    {m.tour === 0 ? (
+                      <>
+                        <button className="btn btn-primary btn-sm" onClick={() => tourGo(1)}>¡Dale, explícame! 👀</button>
+                        <button className="btn btn-sm" onClick={tourSkip}>Ahora no</button>
+                      </>
+                    ) : m.tour < steps.length - 1 ? (
+                      <>
+                        <button className="btn btn-primary btn-sm" onClick={() => tourGo(m.tour! + 1)}>Siguiente → <small>({m.tour}/{steps.length - 2})</small></button>
+                        <button className="btn btn-ghost btn-sm" onClick={tourSkip}>Saltar</button>
+                      </>
+                    ) : null}
+                  </div>
+                )}
                 {(m.links?.length || m.action) && (
                   <div className="asis-links">
                     {m.action && <Link className="btn btn-primary btn-sm" href={m.action.href} onClick={() => setOpen(false)}>{m.action.label}</Link>}
@@ -181,7 +249,7 @@ export function Assistant({ firstName }: { firstName: string }) {
               </div>
             ))}
             {busy && <div className="asis-msg is-bot"><p className="asis-typing"><span /><span /><span /></p></div>}
-            {msgs.length <= 1 && (
+            {msgs.length <= 1 && msgs[0]?.tour == null && (
               <div className="asis-sugs">
                 {SUGERENCIAS.map((s) => <button key={s} className="asis-sug" onClick={() => preguntar(s)}>{s}</button>)}
               </div>

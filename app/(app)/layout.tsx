@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Header profile={profile} alerts={alerts} />
       <SessionGuard />
       {children}
-      <Assistant firstName={(profile.full_name ?? "").split(" ")[0] ?? ""} />
+      <Assistant firstName={(profile.full_name ?? "").split(" ")[0] ?? ""} userId={profile.id} isAdmin={profile.role === "admin"} />
     </>
   );
 }

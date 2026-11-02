@@ -32,6 +32,7 @@ export type Contexto = {
 
 export type Accion =
   | { type: "abrir"; href: string; label: string }
+  | { type: "tour" }
   | { type: "marcarHecho"; eventId: string };
 
 export type Respuesta = { text: string; understood: boolean; links?: { href: string; label: string }[]; action?: Accion };
@@ -556,6 +557,9 @@ export function responder(raw: string, ctx: Contexto): Respuesta {
   // Saludos, gracias, ayuda
   if (has(q, /^(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|ey)( \w+)?$/)) return { understood: true, text: pick(t, `¡Xopá${ctx.firstName ? `, ${ctx.firstName}` : ""}! 👋 ¿Qué quieres saber? ${AYUDA(t)}`, `¡Hola${ctx.firstName ? `, ${ctx.firstName}` : ""}! 👋 ${AYUDA(t)}`) };
   if (has(q, /^(gracias|muchas gracias|grax|thanks|ok|vale|listo|chevere|pritty)( \w+)?$/)) return { understood: true, text: pick(t, "¡A la orden, fren! 🙌", "¡Con gusto! 🙌") };
+  if (has(q, /\bcomo funciona (la app|la aplicacion|la pagina|esto|esta app|esta pagina|aula)\b/, /\bexplica\w* (la app|la aplicacion|la pagina|como funciona)\b/, /\btutorial\b/, /\bguia\b/, /\brecorrido\b/, /\bque (es|hace) (esta|la) (app|aplicacion|pagina)\b/, /\bcomo se usa\b/, /\bcomo uso (la app|esto|la pagina)\b/)) {
+    return { understood: true, action: { type: "tour" }, text: pick(t, "¡De una! Te explico cómo funciona la app. 👇", "¡Claro! Te explico cómo funciona la app. 👇") };
+  }
   if (has(q, /\bque (puedes|sabes) hacer\b/, /\bayuda\b/, /\bque te (puedo|pregunto)\b/, /\bcomo funcionas\b/)) return { understood: true, text: AYUDA(t) };
 
   // Acciones
