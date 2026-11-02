@@ -57,3 +57,21 @@ export const normSubject = (s: GradeSubject): GradeSubject => ({ ...s, target: n
 export const normPrefs = (p: GradePrefs): GradePrefs => ({
   ...p, scale_min: Number(p.scale_min), scale_max: Number(p.scale_max), pass_mark: Number(p.pass_mark),
 });
+
+/**
+ * La primera vez que un alumno entra a Notas, le carga las materias del colegio
+ * (con Digitación, Apreciación y Bimestral) para que solo tenga que poner sus notas.
+ * Se hace una sola vez: si después borra materias, no vuelven a aparecer.
+ */
+export async function ensureStarterSubjects(profile: Profile) {
+  const db = createAdminClient();
+  const { count } = await db.from("grade_subjects").select("id", { count: "exact", head: true }).eq("user_id", profile.id);
+  if ((count ?? 0) > 0) return;
+  // La fila de configuración funciona como marca de "ya se cargaron". Si ya existe, no se repite.
+  const { error } = await db.from("grade_prefs").insert({ user_id: profile.id, ...DEFAULT_PREFS });
+  if (error) return;
+  const rows = COMMON_SUBJECTS.map((s, i) => ({ user_id: profile.id, ...s, method: "ponderado", position: i }));
+  const { data: created } = await db.from("grade_subjects").insert(rows).select("id").returns<{ id: string }[]>();
+  const cats = (created ?? []).flatMap((s) => DEFAULT_CATEGORIES.map((c) => ({ ...c, subject_id: s.id })));
+  if (cats.length) await db.from("grade_categories").insert(cats);
+}

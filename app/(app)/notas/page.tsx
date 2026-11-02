@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fmt } from "@/lib/grades";
-import { getPrefs, normCategory, normItem, normPrefs, normSubject, scaleOf, subjectSummary, SUBJECT_COLORS } from "@/lib/notas";
+import { ensureStarterSubjects, getPrefs, normCategory, normItem, normPrefs, normSubject, scaleOf, subjectSummary, SUBJECT_COLORS } from "@/lib/notas";
 import type { GradeCategory, GradeItem, GradeSubject } from "@/lib/types";
 import { AddSubjectForm, PrefsForm } from "./Forms";
 import { addCommonSubjects } from "./actions";
@@ -20,6 +20,7 @@ const STATUS: Record<string, { cls: string; label: string }> = {
 
 export default async function NotasPage() {
   const profile = await requireUser();
+  await ensureStarterSubjects(profile);
   const prefs = normPrefs(await getPrefs(profile));
   const scale = scaleOf(prefs);
   const db = createAdminClient();
