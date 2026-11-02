@@ -9,6 +9,7 @@ Plataforma privada para publicar lecciones de **Física, Química y Biología**.
 - Hay un **registro de accesos** con alertas de posibles cuentas compartidas.
 - **Agenda** personal de cada alumno, que ya trae los exámenes y tareas de **su salón**; cada uno agrega lo suyo, marca como hecho, oculta, y recibe recordatorios (también en el calendario del celular).
 - **Notas**: cada alumno anota sus calificaciones (privadas) y la página calcula cuánto necesita para pasar o llegar a su meta.
+- **Asistente 🤖** por voz o texto (habla panameño): responde sobre la agenda y las notas de cada alumno y da recomendaciones. Las preguntas que no entiende se guardan sin nombre en *Panel → Asistente*. Sus frases y apodos de materias están en `lib/asistente/texto.ts`.
 
 Tecnología: Next.js (en Vercel) + Supabase (cuentas y base de datos).
 
@@ -20,7 +21,7 @@ Tecnología: Next.js (en Vercel) + Supabase (cuentas y base de datos).
 
 1. En [supabase.com](https://supabase.com), abre tu proyecto.
 2. Ve a **SQL Editor → New query**, pega todo el contenido de [`supabase/schema.sql`](supabase/schema.sql) y pulsa **Run**.
-3. Abre otra **New query**, pega [`supabase/002_agenda_y_notas.sql`](supabase/002_agenda_y_notas.sql) y pulsa **Run** (agenda y notas).
+3. Abre otra **New query**, pega [`supabase/002_agenda_y_notas.sql`](supabase/002_agenda_y_notas.sql) y pulsa **Run** (agenda y notas). Luego lo mismo con [`supabase/003_asistente.sql`](supabase/003_asistente.sql) (asistente).
 4. Ve a **Authentication → Sign In / Providers** y **desactiva "Allow new users to sign up"**.
    Así nadie puede crearse una cuenta por su cuenta; solo tú desde el panel.
 

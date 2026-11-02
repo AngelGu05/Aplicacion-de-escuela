@@ -8,9 +8,10 @@ import type { AgendaEvent } from "@/lib/types";
 type Kind = { value: string; label: string; icon: string };
 
 export function EventForm({
-  event, defaultDate, destinations, kinds, subjects, onCancelHref,
+  event, defaultDate, destinations, kinds, subjects, onCancelHref, initial,
 }: {
   event?: AgendaEvent;
+  initial?: { title?: string; kind?: string; subject?: string; date?: string };
   defaultDate: string;
   destinations: { value: string; label: string }[];
   kinds: readonly Kind[];
@@ -19,7 +20,7 @@ export function EventForm({
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveEvent, undefined);
   const initialDest = event ? (event.scope === "personal" ? "personal" : `salon:${event.classroom_id ?? "todos"}`) : "personal";
-  const [kind, setKind] = useState<string>(event?.kind ?? "tarea");
+  const [kind, setKind] = useState<string>(event?.kind ?? (initial?.kind && kinds.some((k) => k.value === initial.kind) ? initial.kind : "tarea"));
 
   return (
     <form action={action} className="form event-form">
@@ -37,18 +38,18 @@ export function EventForm({
 
       <label className="field">
         <span>Título</span>
-        <input name="title" required maxLength={140} defaultValue={event?.title} placeholder="Ej. Examen del capítulo 3" />
+        <input name="title" required maxLength={140} defaultValue={event?.title ?? initial?.title} placeholder="Ej. Examen del capítulo 3" />
       </label>
 
       <div className="form-row">
         <label className="field">
           <span>Materia (opcional)</span>
-          <input name="subject" list="materias" defaultValue={event?.subject ?? ""} placeholder="Ej. Física" />
+          <input name="subject" list="materias" defaultValue={event?.subject ?? initial?.subject ?? ""} placeholder="Ej. Física" />
           <datalist id="materias">{subjects.map((s) => <option key={s} value={s} />)}</datalist>
         </label>
         <label className="field">
           <span>Fecha</span>
-          <input name="event_date" type="date" required defaultValue={event?.event_date ?? defaultDate} />
+          <input name="event_date" type="date" required defaultValue={event?.event_date ?? initial?.date ?? defaultDate} />
         </label>
         <label className="field">
           <span>Hora (opcional)</span>

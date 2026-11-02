@@ -7,6 +7,7 @@ const TABS = [
   { href: "/admin", label: "Lecciones", match: (p: string) => p === "/admin" || p.startsWith("/admin/lecciones") },
   { href: "/admin/alumnos", label: "Alumnos", match: (p: string) => p.startsWith("/admin/alumnos") },
   { href: "/admin/registro", label: "Registro de accesos", match: (p: string) => p.startsWith("/admin/registro") },
+  { href: "/admin/asistente", label: "Asistente", match: (p: string) => p.startsWith("/admin/asistente") },
 ];
 
 export function AdminTabs() {

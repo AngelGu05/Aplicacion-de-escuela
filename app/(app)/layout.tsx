@@ -3,6 +3,7 @@ import { eventsFor } from "@/lib/agenda";
 import { daysBetween, addDays, todayISO } from "@/lib/time";
 import { Header } from "@/components/Header";
 import { SessionGuard } from "@/components/SessionGuard";
+import { Assistant } from "@/components/Assistant";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Header profile={profile} alerts={alerts} />
       <SessionGuard />
       {children}
+      <Assistant firstName={(profile.full_name ?? "").split(" ")[0] ?? ""} />
     </>
   );
 }

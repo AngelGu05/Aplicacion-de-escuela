@@ -22,7 +22,7 @@ function monthGrid(year: number, month: number) {
   return Array.from({ length: total }, (_, i) => new Date(Date.UTC(year, month - 1, 1 - offset + i)).toISOString().slice(0, 10));
 }
 
-export default async function AgendaPage({ searchParams }: { searchParams: Promise<{ mes?: string; dia?: string; ocultos?: string }> }) {
+export default async function AgendaPage({ searchParams }: { searchParams: Promise<{ mes?: string; dia?: string; ocultos?: string; nuevo?: string; titulo?: string; tipo?: string; materia?: string; fecha?: string }> }) {
   const profile = await requireUser();
   const sp = await searchParams;
   const today = todayISO();
@@ -121,9 +121,11 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
             <p className="empty-sm">Nada para este día. 🎈</p>
           )}
 
-          <details className="card add-event" open={!dayEvents.length && selected >= today}>
+          <details className="card add-event" open={sp.nuevo === "1" || (!dayEvents.length && selected >= today)}>
             <summary><span className="btn btn-primary btn-sm">+ Agregar evento</span></summary>
-            <EventForm defaultDate={selected} destinations={destinations} kinds={EVENT_KINDS} subjects={SUBJECT_SUGGESTIONS} />
+            {sp.nuevo === "1" && <p className="alert alert-info">🤖 El asistente llenó esto por ti. Revisa y pulsa <b>Agregar a la agenda</b>.</p>}
+            <EventForm key={sp.nuevo === "1" ? `${sp.titulo}-${sp.fecha}` : selected} defaultDate={selected} destinations={destinations} kinds={EVENT_KINDS} subjects={SUBJECT_SUGGESTIONS}
+              initial={sp.nuevo === "1" ? { title: sp.titulo?.slice(0, 140), kind: sp.tipo, subject: sp.materia?.slice(0, 60), date: isISODate(sp.fecha) ? sp.fecha : undefined } : undefined} />
           </details>
         </section>
       </div>
@@ -143,7 +145,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
         )}
       </section>
 
-      <section className="card sync-card">
+      <section className="card sync-card" id="sync">
         <h2>📱 Recordatorios en tu celular</h2>
         <p className="muted">
           Suscribe el calendario de tu celular a tu agenda: los eventos nuevos aparecen solos y tu teléfono te avisa.

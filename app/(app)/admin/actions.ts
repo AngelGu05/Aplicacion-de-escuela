@@ -183,3 +183,14 @@ export async function setStudentClassroom(formData: FormData) {
   await createAdminClient().from("profiles").update({ classroom_id: UUID.test(raw) ? raw : null }).eq("id", id);
   revalidatePath("/admin/alumnos");
 }
+
+// ---------------------------------------------------------------- Asistente
+
+export async function deleteUnknown(formData: FormData) {
+  await requireAdmin();
+  const id = str(formData, "id");
+  const db = createAdminClient();
+  if (id === "todas") await db.from("assistant_unknown").delete().gte("count", 0);
+  else if (UUID.test(id)) await db.from("assistant_unknown").delete().eq("id", id);
+  revalidatePath("/admin/asistente");
+}
