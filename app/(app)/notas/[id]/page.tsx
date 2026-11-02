@@ -35,11 +35,11 @@ export default async function SubjectGradesPage({ params, searchParams }: { para
   const requested = Number(p);
   const period = requested >= 1 && requested <= prefs.periods ? requested : Math.min(prefs.periods, Math.max(1, lastWithItems));
   const periodItems = items.filter((i) => i.period === period);
-  const current = periodGrade(subject.method, cats, periodItems);
+  const current = periodGrade(subject.method, cats, periodItems, undefined, scale.decimals);
   const needed = neededOnPending(subject.method, cats, periodItems, target, scale);
   const weightSum = cats.reduce((a, c) => a + c.weight, 0);
   const groups = subject.method === "ponderado"
-    ? [...cats.map((c) => ({ key: c.id, title: `${c.name} · ${c.weight}%`, list: periodItems.filter((i) => i.category_id === c.id) })),
+    ? [...cats.map((c) => ({ key: c.id, title: `${c.name} · ${Math.round((c.weight / (weightSum || 1)) * 1000) / 10}%`, list: periodItems.filter((i) => i.category_id === c.id) })),
        { key: "none", title: "Sin parte (no cuentan)", list: periodItems.filter((i) => !cats.some((c) => c.id === i.category_id)) }].filter((g) => g.key !== "none" || g.list.length)
     : [{ key: "all", title: "Notas", list: periodItems }];
 
@@ -118,7 +118,7 @@ export default async function SubjectGradesPage({ params, searchParams }: { para
           <div className="card">
             <h3 className="h-card">Agregar nota al {prefs.period_label.toLowerCase()} {period}</h3>
             {subject.method === "ponderado" && !cats.length
-              ? <p className="alert alert-error">Primero agrega las partes (diario, examen…) en la configuración de la materia.</p>
+              ? <p className="alert alert-error">Primero agrega las partes (Digitación, Apreciación, Bimestral) en la configuración de la materia.</p>
               : <AddItemForm subject={subject} period={period} cats={cats} prefs={prefs} />}
           </div>
         </section>
@@ -126,7 +126,7 @@ export default async function SubjectGradesPage({ params, searchParams }: { para
         <aside className="notas-side">
           {subject.method === "ponderado" && (
             <details className="card" open={!cats.length || Math.abs(weightSum - 100) > 0.5}>
-              <summary><b>Partes y porcentajes</b> <span className={`small ${Math.abs(weightSum - 100) > 0.5 ? "text-error" : "muted"}`}>(suman {Math.round(weightSum * 100) / 100}%)</span></summary>
+              <summary><b>Partes y porcentajes</b> <span className={`small ${Math.abs(weightSum - 100) > 0.5 ? "text-error" : "muted"}`}>(suman {Math.round(weightSum * 10) / 10}%)</span></summary>
               <ul className="cat-list">
                 {cats.map((c) => (
                   <li key={c.id}>
@@ -134,7 +134,7 @@ export default async function SubjectGradesPage({ params, searchParams }: { para
                       <input type="hidden" name="id" value={c.id} />
                       <input type="hidden" name="subject_id" value={id} />
                       <input name="name" defaultValue={c.name} aria-label="Nombre" />
-                      <input name="weight" inputMode="decimal" defaultValue={c.weight} aria-label="Porcentaje" className="w-input" />
+                      <input name="weight" inputMode="decimal" defaultValue={Math.round(c.weight * 10) / 10} aria-label="Porcentaje" className="w-input" />
                       <span className="muted">%</span>
                       <button className="btn btn-ghost btn-sm" title="Guardar">✓</button>
                     </form>
@@ -152,7 +152,7 @@ export default async function SubjectGradesPage({ params, searchParams }: { para
                 <input name="weight" inputMode="decimal" placeholder="%" aria-label="Porcentaje" className="w-input" required />
                 <button className="btn btn-sm">Agregar</button>
               </form>
-              <p className="small muted">Si los porcentajes no suman 100, se reparten en proporción.</p>
+              <p className="small muted">Si los porcentajes no suman 100, se reparten en proporción. Como en Seduca, cada parte se corta a 1 decimal antes de promediar.</p>
             </details>
           )}
 

@@ -61,8 +61,8 @@ export default async function NotasPage() {
       {rows.length === 0 ? (
         <section className="card empty-notas">
           <h2>Empieza agregando tus materias</h2>
-          <p className="muted">Puedes agregar las más comunes de un clic y luego borrar las que no tengas.</p>
-          <form action={addCommonSubjects}><button className="btn btn-primary">✨ Agregar materias comunes</button></form>
+          <p className="muted">Carga de un clic las 13 materias del colegio, ya divididas en <b>Digitación</b>, <b>Apreciación</b> y <b>Bimestral</b>, y calculadas igual que en Seduca.</p>
+          <form action={addCommonSubjects}><button className="btn btn-primary">✨ Cargar mis materias del colegio</button></form>
         </section>
       ) : (
         <div className="grade-grid">
@@ -102,6 +102,9 @@ export default async function NotasPage() {
         <details className="card">
           <summary><b>+ Agregar materia</b></summary>
           <AddSubjectForm colors={SUBJECT_COLORS} />
+          <form action={addCommonSubjects} className="reload-subjects">
+            <button className="btn btn-ghost btn-sm">↺ Cargar las materias del colegio que me falten</button>
+          </form>
         </details>
         <details className="card">
           <summary><b>⚙️ Escala de notas</b> <span className="muted small">({prefs.scale_min} a {prefs.scale_max}, pasa con {prefs.pass_mark})</span></summary>

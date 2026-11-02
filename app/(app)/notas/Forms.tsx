@@ -5,6 +5,11 @@ import { addItem, addSubject, savePrefs, updateSubject } from "./actions";
 import type { FormState } from "@/app/login/actions";
 import type { GradeCategory, GradePrefs, GradeSubject } from "@/lib/types";
 
+const pct = (w: number, cats: GradeCategory[]) => {
+  const total = cats.reduce((a, c) => a + c.weight, 0) || 1;
+  return Math.round((w / total) * 1000) / 10;
+};
+
 function Msg({ state }: { state: FormState }) {
   if (state?.error) return <p className="alert alert-error">{state.error}</p>;
   if (state?.ok) return <p className="alert alert-info">{state.ok}</p>;
@@ -56,9 +61,9 @@ export function AddSubjectForm({ colors }: { colors: string[] }) {
       <div className="form-row">
         <label className="field"><span>Materia</span><input name="name" required maxLength={50} placeholder="Ej. Matemáticas" /></label>
         <label className="field"><span>¿Cómo calcula tu profe?</span>
-          <select name="method" defaultValue="promedio">
+          <select name="method" defaultValue="ponderado">
+            <option value="ponderado">Como el colegio: Digitación, Apreciación y Bimestral</option>
             <option value="promedio">Promedio simple (todas valen igual)</option>
-            <option value="ponderado">Por partes con porcentaje (diario, examen…)</option>
           </select>
         </label>
       </div>
@@ -128,7 +133,7 @@ export function AddItemForm({ subject, period, cats, prefs }: { subject: GradeSu
         {subject.method === "ponderado" && (
           <label className="field"><span>Parte</span>
             <select name="category_id" required defaultValue={cats[0]?.id}>
-              {cats.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.weight}%)</option>)}
+              {cats.map((c) => <option key={c.id} value={c.id}>{c.name} ({pct(c.weight, cats)}%)</option>)}
             </select>
           </label>
         )}

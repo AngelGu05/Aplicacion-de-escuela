@@ -16,7 +16,7 @@ export function Simulator({
   const [x, setX] = useState(Math.min(scale.max, Math.max(scale.min, target)));
   if (!pending) return null;
 
-  const g = periodGrade(method, cats, items, x);
+  const g = periodGrade(method, cats, items, x, scale.decimals);
   const grades = otherGrades.map((v, i) => (i === periodIndex ? g : v));
   const year = yearSummary(grades, target, scale);
   const okPeriod = g != null && g >= target - 1e-9;

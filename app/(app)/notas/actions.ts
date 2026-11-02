@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { COMMON_SUBJECTS, getPrefs, normPrefs } from "@/lib/notas";
+import { COMMON_SUBJECTS, DEFAULT_CATEGORIES, getPrefs, normPrefs } from "@/lib/notas";
 import type { GradeSubject, Profile } from "@/lib/types";
 import type { FormState } from "@/app/login/actions";
 
@@ -55,11 +55,7 @@ export async function addSubject(_prev: FormState, f: FormData): Promise<FormSta
   const { data, error } = await db.from("grade_subjects").insert({ user_id: profile.id, name, color, method }).select("id").single<{ id: string }>();
   if (error || !data) return { error: error?.message ?? "No se pudo crear." };
   if (method === "ponderado") {
-    await db.from("grade_categories").insert([
-      { subject_id: data.id, name: "Diario", weight: 33.33, position: 0 },
-      { subject_id: data.id, name: "Apreciación", weight: 33.33, position: 1 },
-      { subject_id: data.id, name: "Examen", weight: 33.34, position: 2 },
-    ]);
+    await db.from("grade_categories").insert(DEFAULT_CATEGORIES.map((c) => ({ ...c, subject_id: data.id })));
   }
   done();
   redirect(`/notas/${data.id}`);
@@ -70,8 +66,12 @@ export async function addCommonSubjects() {
   const db = createAdminClient();
   const { data: existing } = await db.from("grade_subjects").select("name").eq("user_id", profile.id).returns<{ name: string }[]>();
   const have = new Set((existing ?? []).map((s) => s.name.toLowerCase()));
-  const rows = COMMON_SUBJECTS.filter((s) => !have.has(s.name.toLowerCase())).map((s, i) => ({ user_id: profile.id, ...s, position: i }));
-  if (rows.length) await db.from("grade_subjects").insert(rows);
+  const rows = COMMON_SUBJECTS.map((s, i) => ({ user_id: profile.id, ...s, method: "ponderado", position: i }))
+    .filter((s) => !have.has(s.name.toLowerCase()));
+  if (!rows.length) { done(); return; }
+  const { data: created } = await db.from("grade_subjects").insert(rows).select("id").returns<{ id: string }[]>();
+  const cats = (created ?? []).flatMap((s) => DEFAULT_CATEGORIES.map((c) => ({ ...c, subject_id: s.id })));
+  if (cats.length) await db.from("grade_categories").insert(cats);
   done();
 }
 

@@ -3,7 +3,7 @@
  *
  * - Una materia tiene notas por periodo (trimestre).
  * - "promedio": todas las notas del periodo valen lo mismo.
- * - "ponderado": las notas se agrupan en partes (diario, examen…) y cada parte vale un porcentaje.
+ * - "ponderado": las notas se agrupan en partes (Digitación, Apreciación, Bimestral) y cada parte vale un porcentaje.
  * - Una nota sin valor (score = null) es una nota PENDIENTE: sirve para calcular cuánto se necesita.
  */
 import type { GradeCategory, GradeItem, GradeMethod } from "./types";
@@ -24,28 +24,36 @@ export function fmt(x: number | null | undefined, decimals: number) {
   return x == null ? "—" : x.toFixed(decimals);
 }
 
+/** Corta (no redondea) a N decimales, como hace Seduca: 3.95 → 3.9. */
+export function truncTo(x: number, decimals: number) {
+  const f = 10 ** decimals;
+  return Math.floor(x * f + 1e-9) / f;
+}
+
 /**
- * Nota de un periodo. Si `fill` tiene valor, las notas pendientes cuentan con ese valor;
- * si no, se ignoran (nota "actual").
+ * Nota de un periodo, calculada como en Seduca:
+ * cada parte es el promedio de sus notas (cortado), y la nota del periodo es el promedio
+ * ponderado de las partes que ya tienen notas (también cortado).
+ * Si `fill` tiene valor, las notas pendientes cuentan con ese valor; si no, se ignoran.
  */
-export function periodGrade(method: GradeMethod, cats: GradeCategory[], items: GradeItem[], fill?: number): number | null {
+export function periodGrade(method: GradeMethod, cats: GradeCategory[], items: GradeItem[], fill?: number, decimals = 1): number | null {
   const valued = items
     .map((i) => ({ ...i, v: i.score ?? fill }))
     .filter((i): i is GradeItem & { v: number } => typeof i.v === "number");
   if (!valued.length) return null;
 
   const weighted = cats.filter((c) => c.weight > 0);
-  if (method === "promedio" || !weighted.length) return mean(valued.map((i) => i.v));
+  if (method === "promedio" || !weighted.length) return truncTo(mean(valued.map((i) => i.v))!, decimals);
 
   let sum = 0;
   let totalWeight = 0;
   for (const c of weighted) {
     const avg = mean(valued.filter((i) => i.category_id === c.id).map((i) => i.v));
     if (avg == null) continue;
-    sum += c.weight * avg;
+    sum += c.weight * truncTo(avg, decimals);
     totalWeight += c.weight;
   }
-  return totalWeight ? sum / totalWeight : null;
+  return totalWeight ? truncTo(sum / totalWeight, decimals) : null;
 }
 
 export type Needed =
@@ -57,14 +65,16 @@ export type Needed =
 /** Cuánto hay que sacar en CADA nota pendiente del periodo para llegar a la meta. */
 export function neededOnPending(method: GradeMethod, cats: GradeCategory[], items: GradeItem[], target: number, scale: Scale): Needed {
   if (!items.some((i) => i.score == null)) return { status: "sin-pendientes" };
-  const low = periodGrade(method, cats, items, scale.min);
-  const high = periodGrade(method, cats, items, scale.max);
-  if (low == null || high == null) return { status: "sin-pendientes" };
-  if (low >= target - 1e-9) return { status: "asegurado" };
-  if (high < target - 1e-9) return { status: "imposible", best: high };
-  // La nota del periodo crece en línea recta con el valor de las pendientes.
-  const x = scale.min + ((target - low) / (high - low)) * (scale.max - scale.min);
-  return { status: "necesita", value: Math.min(scale.max, Math.max(scale.min, ceilTo(x, scale.decimals))) };
+  const f = (x: number) => periodGrade(method, cats, items, x, scale.decimals) ?? -Infinity;
+  if (f(scale.min) >= target - 1e-9) return { status: "asegurado" };
+  const best = f(scale.max);
+  if (best < target - 1e-9) return { status: "imposible", best };
+  // Busca la nota más baja que alcanza (con el corte de decimales la cuenta no es una línea recta).
+  const step = 1 / 10 ** scale.decimals;
+  for (let x = scale.min; x <= scale.max + 1e-9; x = roundTo(x + step, scale.decimals)) {
+    if (f(x) >= target - 1e-9) return { status: "necesita", value: x };
+  }
+  return { status: "imposible", best };
 }
 
 export type YearSummary = {
@@ -78,7 +88,7 @@ export type YearSummary = {
 export function yearSummary(periodGrades: (number | null)[], target: number, scale: Scale): YearSummary {
   const known = periodGrades.filter((g): g is number => g != null);
   const remaining = periodGrades.length - known.length;
-  const average = mean(known);
+  const average = known.length ? truncTo(mean(known)!, scale.decimals) : null;
   if (!known.length) return { average: null, remaining, needed: target, status: "sin-datos" };
 
   if (remaining === 0) {
