@@ -13,6 +13,7 @@ export type Profile = {
   classroom_id: string | null;
   can_edit_agenda: boolean;
   calendar_token: string;
+  lessons_enabled?: boolean; // false = cuenta "Solo herramientas" (sin lecciones)
 };
 
 export type Subject = {

@@ -5,7 +5,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { deleteClassroom, deleteStudent, forceLogout, setStudentClassroom, setStudentFlag, setSubjectAccess } from "../actions";
 import { NewClassroomForm, NewStudentForm, ResetPasswordForm } from "./StudentForms";
 
-function FlagButton({ id, flag, value, on, off }: { id: string; flag: "disabled" | "can_edit_agenda"; value: boolean; on: string; off: string }) {
+function FlagButton({ id, flag, value, on, off }: { id: string; flag: "disabled" | "can_edit_agenda" | "lessons_enabled"; value: boolean; on: string; off: string }) {
   return (
     <form action={setStudentFlag}>
       <input type="hidden" name="id" value={id} />
@@ -90,7 +90,7 @@ export default async function StudentsPage() {
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Alumno</th><th>Sesión</th><th>Salón</th><th>Acceso Premium</th><th>Agenda</th><th>Estado</th><th>Acciones</th></tr>
+              <tr><th>Alumno</th><th>Sesión</th><th>Salón</th><th>Cuenta</th><th>Acceso Premium</th><th>Agenda</th><th>Estado</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               {students.map((s) => (
@@ -113,6 +113,7 @@ export default async function StudentsPage() {
                       <button className="btn btn-ghost btn-sm" title="Guardar salón">✓</button>
                     </form>
                   </td>
+                  <td><FlagButton id={s.id} flag="lessons_enabled" value={s.lessons_enabled !== false} on="📚 Con lecciones" off="🧰 Solo herramientas" /></td>
                   <td><AccessChips studentId={s.id} subjects={subjects} grants={grants.filter((g) => g.user_id === s.id)} today={today} /></td>
                   <td><FlagButton id={s.id} flag="can_edit_agenda" value={s.can_edit_agenda} on="Editor" off="Normal" /></td>
                   <td><FlagButton id={s.id} flag="disabled" value={s.disabled} on="Suspendido" off="Activo" /></td>

@@ -693,3 +693,14 @@ details.card[open] > summary { margin-bottom: 14px; }
 /* Las pestañas se pueden deslizar en el celular, pero sin mostrar barra de desplazamiento */
 .tabs { scrollbar-width: none; -ms-overflow-style: none; }
 .tabs::-webkit-scrollbar { display: none; }
+
+/* Inicio de cuentas "Solo herramientas" */
+.tool-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+.tool-card {
+  display: grid; gap: 6px; align-content: start; padding: 22px; border-radius: var(--radius); text-decoration: none; position: relative; overflow: hidden;
+  background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 60%), color-mix(in srgb, var(--surface) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: transform .2s, box-shadow .2s;
+}
+.tool-card:hover { transform: translateY(-3px); box-shadow: 0 16px 34px -18px color-mix(in srgb, var(--accent) 70%, transparent); }
+.tool-card p { margin: 0; color: var(--muted); }
+.tool-icon { font-size: 32px; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 16px; background: color-mix(in srgb, var(--accent) 15%, var(--surface)); margin-bottom: 4px; }

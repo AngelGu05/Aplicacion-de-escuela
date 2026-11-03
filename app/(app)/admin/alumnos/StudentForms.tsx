@@ -42,6 +42,7 @@ export function NewStudentForm({ classrooms, subjects }: { classrooms: { id: str
           </select>
         </label>
       )}
+      <label className="check"><input type="checkbox" name="tools_only" /> 🧰 <b>Solo herramientas</b>: agenda, notas y asistente, sin lecciones</label>
       {subjects.length > 0 && (
         <fieldset className="subject-checks">
           <legend>Acceso Premium (opcional)</legend>

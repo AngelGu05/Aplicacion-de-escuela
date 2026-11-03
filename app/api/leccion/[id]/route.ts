@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { getSessionState } from "@/lib/auth";
-import { canSeePremium, premiumAccess } from "@/lib/access";
+import { canSeeLessons, canSeePremium, premiumAccess } from "@/lib/access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildLessonDocument, simpleMessagePage } from "@/lib/protect";
 import type { Lesson } from "@/lib/types";
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
     return page(401, "Sesión no válida", msg);
   }
   const profile = state.profile;
+  if (!canSeeLessons(profile)) return page(403, "Sin acceso", "Tu cuenta no incluye lecciones.");
 
   if (!/^[0-9a-f-]{36}$/i.test(id)) return page(404, "No encontrada", "Esta lección no existe.");
 

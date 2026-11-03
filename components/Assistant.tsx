@@ -12,9 +12,10 @@ type Msg = {
 };
 
 /** Recorrido de bienvenida: explica la app en pasos cortos. */
-const TOUR = (name: string, isAdmin: boolean): { text: string; link?: { href: string; label: string } }[] => [
+const TOUR = (name: string, isAdmin: boolean, lessons = true): { text: string; link?: { href: string; label: string } }[] => [
   { text: `¡Xopá${name ? `, ${name}` : ""}! 👋 Bienvenido a **Aula de Ciencias**. ¿Te explico rápido cómo funciona? Es menos de un minuto. 😉` },
-  { text: "📚 **Materias**: aquí están las lecciones interactivas de **Física, Química y Biología**. Solo se ven dentro de la app y llevan tu correo como marca de agua. Ojo: tu cuenta solo puede estar abierta en **un dispositivo a la vez**; si entras en otro, se cierra en el primero.", link: { href: "/", label: "Ver materias" } },
+  ...(lessons ? [] : [{ text: "🧰 Tu cuenta es de **herramientas**: tienes la agenda, tus notas y a mí. (Las lecciones no están incluidas en tu cuenta.)" }]),
+  ...(!lessons ? [] : [{ text: "📚 **Materias**: aquí están las lecciones interactivas de **Física, Química y Biología**. Solo se ven dentro de la app y llevan tu correo como marca de agua. Ojo: tu cuenta solo puede estar abierta en **un dispositivo a la vez**; si entras en otro, se cierra en el primero.", link: { href: "/", label: "Ver materias" } }]),
   { text: "📅 **Agenda**: los exámenes y tareas de **tu salón** te aparecen solos. Tú puedes agregar lo tuyo, marcar cosas como **hechas** y ocultar lo que no te sirva. El número rojo 🔔 del menú te avisa lo que viene. Tip: en la agenda puedes **suscribir tu celular** para que te lleguen recordatorios.", link: { href: "/agenda", label: "Abrir agenda" } },
   { text: "📊 **Notas**: tus materias ya están cargadas con **Digitación, Apreciación y Bimestral**, y se calculan igual que en Seduca. Si dejas una nota **vacía** (por ejemplo el bimestral), te digo **cuánto necesitas** para pasar o para tu meta. Solo tú ves tus notas. 🔒", link: { href: "/notas", label: "Abrir mis notas" } },
   { text: "📋 **Importar desde Seduca**: en vez de copiar nota por nota, abre Seduca en la compu, selecciona tu tabla de calificaciones, cópiala y pégala aquí. ¡Se llena todo solo!", link: { href: "/notas/importar", label: "Importar mis notas" } },
@@ -81,7 +82,7 @@ type SR = {
   onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null;
 };
 
-export function Assistant({ firstName, userId, isAdmin }: { firstName: string; userId: string; isAdmin: boolean }) {
+export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firstName: string; userId: string; isAdmin: boolean; lessons?: boolean }) {
   const path = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -115,7 +116,7 @@ export function Assistant({ firstName, userId, isAdmin }: { firstName: string; u
   }, []);
 
   const tourKey = `aula-tour-${userId}`;
-  const steps = TOUR(firstName, isAdmin);
+  const steps = TOUR(firstName, isAdmin, lessons);
 
   // La primera vez, el asistente se abre solo y ofrece el recorrido
   useEffect(() => {
@@ -184,7 +185,7 @@ export function Assistant({ firstName, userId, isAdmin }: { firstName: string; u
       if (res.status === 401) { window.location.href = "/login"; return; }
       const r = (await res.json()) as Omit<Msg, "action"> & { understood: boolean; action?: { type: "abrir"; href: string; label: string } | { type: "tour" } };
       if (r.action?.type === "tour") {
-        const st = TOUR(firstName, isAdmin)[1];
+        const st = TOUR(firstName, isAdmin, lessons)[1];
         setMsgs((m) => [...m, { from: "bot", text: r.text }, { from: "bot", text: st.text, tour: 1, links: st.link ? [st.link] : undefined }]);
         hablar(`${r.text} ${st.text}`);
         return;
@@ -198,7 +199,7 @@ export function Assistant({ firstName, userId, isAdmin }: { firstName: string; u
     } finally {
       setBusy(false);
     }
-  }, [busy, hablar, router, firstName, isAdmin]);
+  }, [busy, hablar, router, firstName, isAdmin, lessons]);
 
   const escuchar = () => {
     const w = window as unknown as { SpeechRecognition?: new () => SR; webkitSpeechRecognition?: new () => SR };

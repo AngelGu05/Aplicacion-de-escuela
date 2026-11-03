@@ -21,7 +21,7 @@ Tecnología: Next.js (en Vercel) + Supabase (cuentas y base de datos).
 
 1. En [supabase.com](https://supabase.com), abre tu proyecto.
 2. Ve a **SQL Editor → New query**, pega todo el contenido de [`supabase/schema.sql`](supabase/schema.sql) y pulsa **Run**.
-3. Abre otra **New query**, pega [`supabase/002_agenda_y_notas.sql`](supabase/002_agenda_y_notas.sql) y pulsa **Run** (agenda y notas). Luego lo mismo con [`supabase/003_asistente.sql`](supabase/003_asistente.sql) (asistente) y [`supabase/004_acceso_por_materia.sql`](supabase/004_acceso_por_materia.sql) (acceso Premium por materia).
+3. Abre otra **New query**, pega [`supabase/002_agenda_y_notas.sql`](supabase/002_agenda_y_notas.sql) y pulsa **Run** (agenda y notas). Luego lo mismo con [`supabase/003_asistente.sql`](supabase/003_asistente.sql) (asistente) [`supabase/004_acceso_por_materia.sql`](supabase/004_acceso_por_materia.sql) (acceso Premium por materia) y [`supabase/005_solo_herramientas.sql`](supabase/005_solo_herramientas.sql) (cuentas sin lecciones).
 4. Ve a **Authentication → Sign In / Providers** y **desactiva "Allow new users to sign up"**.
    Así nadie puede crearse una cuenta por su cuenta; solo tú desde el panel.
 

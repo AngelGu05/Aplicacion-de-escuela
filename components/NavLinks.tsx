@@ -10,10 +10,10 @@ const ICONS: Record<string, React.ReactNode> = {
   panel: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></>,
 };
 
-export function NavLinks({ isAdmin, alerts, variant }: { isAdmin: boolean; alerts: number; variant: "top" | "bottom" }) {
+export function NavLinks({ isAdmin, alerts, variant, lessons = true }: { isAdmin: boolean; alerts: number; variant: "top" | "bottom"; lessons?: boolean }) {
   const path = usePathname();
   const items = [
-    { key: "inicio", href: "/", label: "Materias", active: path === "/" || path.startsWith("/materias") },
+    { key: "inicio", href: "/", label: lessons ? "Materias" : "Inicio", active: path === "/" || path.startsWith("/materias") },
     { key: "agenda", href: "/agenda", label: "Agenda", active: path.startsWith("/agenda"), badge: alerts },
     { key: "notas", href: "/notas", label: "Notas", active: path.startsWith("/notas") },
     ...(isAdmin ? [{ key: "panel", href: "/admin", label: "Panel", active: path.startsWith("/admin") }] : []),

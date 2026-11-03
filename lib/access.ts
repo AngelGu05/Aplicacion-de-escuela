@@ -27,4 +27,7 @@ export async function premiumAccess(profile: Profile): Promise<"all" | Set<strin
   return new Set(grants.filter((g) => isActive(g, today)).map((g) => g.subject_id));
 }
 
+/** ¿Puede ver la sección de Materias y sus lecciones? (las cuentas "Solo herramientas" no). */
+export const canSeeLessons = (profile: Profile) => profile.role === "admin" || profile.lessons_enabled !== false;
+
 export const canSeePremium = (acc: "all" | Set<string>, subjectId: string) => acc === "all" || acc.has(subjectId);

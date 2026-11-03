@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Subject } from "@/lib/types";
-import { canSeePremium, premiumAccess } from "@/lib/access";
+import { canSeeLessons, canSeePremium, premiumAccess } from "@/lib/access";
 import { eventsFor, kindInfo } from "@/lib/agenda";
 import { addDays, daysBetween, relativeDay, shortTime, todayISO } from "@/lib/time";
 
@@ -29,6 +29,7 @@ export default async function HomePage() {
   const counts = new Map<string, number>();
   lessons?.forEach((l) => counts.set(l.subject_id, (counts.get(l.subject_id) ?? 0) + 1));
   const firstName = (profile.full_name || "").split(" ")[0];
+  const conLecciones = canSeeLessons(profile);
 
   return (
     <main className="container">
@@ -37,7 +38,7 @@ export default async function HomePage() {
         <h1>
           {firstName ? <>Hola, <span className="hero-name">{firstName}</span> 👋</> : "¡Hola! 👋"}
         </h1>
-        <p>¿Qué vamos a aprender hoy? Elige una materia para ver sus lecciones.</p>
+        <p>{conLecciones ? "¿Qué vamos a aprender hoy? Elige una materia para ver sus lecciones." : "Tu agenda, tus notas y tu asistente, todo en un solo lugar."}</p>
       </section>
 
       {upcoming.length > 0 && (
@@ -66,25 +67,47 @@ export default async function HomePage() {
         </section>
       )}
 
+      {!conLecciones ? (
+        <div className="tool-grid">
+          <Link href="/agenda" className="tool-card" style={{ "--accent": "#2563eb" } as React.CSSProperties}>
+            <span className="tool-icon" aria-hidden>📅</span>
+            <h2>Agenda</h2>
+            <p>Exámenes y tareas de tu salón, más lo tuyo. Con recordatorios.</p>
+          </Link>
+          <Link href="/notas" className="tool-card" style={{ "--accent": "#059669" } as React.CSSProperties}>
+            <span className="tool-icon" aria-hidden>📊</span>
+            <h2>Mis notas</h2>
+            <p>Tus promedios y cuánto necesitas para pasar o llegar a tu meta.</p>
+          </Link>
+          <Link href="/notas/importar" className="tool-card" style={{ "--accent": "#d97706" } as React.CSSProperties}>
+            <span className="tool-icon" aria-hidden>📋</span>
+            <h2>Importar de Seduca</h2>
+            <p>Copia tu tabla de calificaciones y se llena todo solo.</p>
+          </Link>
+        </div>
+      ) : (
+        <>
       <h2 className="section-title">📚 Materias</h2>
-      <div className="subject-grid">
-        {(subjects ?? []).map((s) => {
-          const n = counts.get(s.id) ?? 0;
-          return (
-            <Link key={s.id} href={`/materias/${s.slug}`} className="subject-card" style={{ "--accent": s.color } as React.CSSProperties}>
-              <span className="subject-watermark" aria-hidden>{ICONS[s.slug] ?? "📘"}</span>
-              <span className="subject-icon" aria-hidden>{ICONS[s.slug] ?? "📘"}</span>
-              <h2>{s.name}</h2>
-              {access !== "all" && canSeePremium(access, s.id) && <span className="access-chip is-on">⭐ Premium</span>}
-              {s.description && <p>{s.description}</p>}
-              <span className="subject-foot">
-                <span className="subject-count">{n === 1 ? "1 publicación" : `${n} publicaciones`}</span>
-                <span className="subject-go" aria-hidden>Entrar →</span>
-              </span>
-            </Link>
-          );
-        })}
-      </div>
+        <div className="subject-grid">
+          {(subjects ?? []).map((s) => {
+            const n = counts.get(s.id) ?? 0;
+            return (
+              <Link key={s.id} href={`/materias/${s.slug}`} className="subject-card" style={{ "--accent": s.color } as React.CSSProperties}>
+                <span className="subject-watermark" aria-hidden>{ICONS[s.slug] ?? "📘"}</span>
+                <span className="subject-icon" aria-hidden>{ICONS[s.slug] ?? "📘"}</span>
+                <h2>{s.name}</h2>
+                {access !== "all" && canSeePremium(access, s.id) && <span className="access-chip is-on">⭐ Premium</span>}
+                {s.description && <p>{s.description}</p>}
+                <span className="subject-foot">
+                  <span className="subject-count">{n === 1 ? "1 publicación" : `${n} publicaciones`}</span>
+                  <span className="subject-go" aria-hidden>Entrar →</span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+        </>
+      )}
     </main>
   );
 }

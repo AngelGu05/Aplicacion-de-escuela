@@ -84,6 +84,7 @@ export async function createStudent(_prev: FormState, formData: FormData): Promi
   const fullName = str(formData, "full_name");
   const email = str(formData, "email").toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const toolsOnly = formData.get("tools_only") === "on";
   const subjectIds = formData.getAll("subject_access").map(String).filter((x) => UUID.test(x));
   const classroomRaw = String(formData.get("classroom_id") ?? "");
   const classroom_id = UUID.test(classroomRaw) ? classroomRaw : null;
@@ -102,7 +103,7 @@ export async function createStudent(_prev: FormState, formData: FormData): Promi
 
   const { error: profileError } = await db
     .from("profiles")
-    .insert({ id: data.user.id, email, full_name: fullName || null, role: "student", premium: false, classroom_id });
+    .insert({ id: data.user.id, email, full_name: fullName || null, role: "student", premium: false, classroom_id, ...(toolsOnly ? { lessons_enabled: false } : {}) });
   if (profileError) {
     await db.auth.admin.deleteUser(data.user.id);
     return { error: "No se pudo guardar el perfil: " + profileError.message, values };
@@ -125,7 +126,7 @@ async function targetStudent(formData: FormData) {
 export async function setStudentFlag(formData: FormData) {
   const id = await targetStudent(formData);
   const flag = str(formData, "flag");
-  if (!id || (flag !== "premium" && flag !== "disabled" && flag !== "can_edit_agenda")) return;
+  if (!id || !["disabled", "can_edit_agenda", "lessons_enabled"].includes(flag)) return;
   const value = str(formData, "value") === "true";
   const update: Record<string, unknown> = { [flag]: value };
   if (flag === "disabled" && value) update.active_session_id = null; // suspender = sacar ya

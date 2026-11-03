@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { canSeePremium, premiumAccess } from "@/lib/access";
+import { canSeeLessons, canSeePremium, premiumAccess } from "@/lib/access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ProtectedFrame } from "@/components/ProtectedFrame";
 import { LESSON_SUMMARY_COLUMNS, type LessonSummary, type Subject } from "@/lib/types";
@@ -10,6 +10,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
   const { slug, id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const profile = await requireUser();
+  if (!canSeeLessons(profile)) redirect("/");
   const db = createAdminClient();
 
   const [{ data: subject }, { data: lesson }] = await Promise.all([
