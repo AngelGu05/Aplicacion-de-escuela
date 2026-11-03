@@ -88,7 +88,7 @@ export function LessonForm({ subjects, lesson }: { subjects: Subject[]; lesson?:
 
       <div className="checks">
         <label><input type="checkbox" name="published" checked={published} onChange={(e) => setPublished(e.target.checked)} /> Publicada (visible para los alumnos)</label>
-        <label><input type="checkbox" name="is_premium" checked={premium} onChange={(e) => setPremium(e.target.checked)} /> Premium (solo alumnos con acceso premium)</label>
+        <label><input type="checkbox" name="is_premium" checked={premium} onChange={(e) => setPremium(e.target.checked)} /> Premium (solo alumnos con acceso a esta materia)</label>
       </div>
 
       {state?.error && <p className="alert alert-error">{state.error}</p>}

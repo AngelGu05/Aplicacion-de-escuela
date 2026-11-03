@@ -5,7 +5,7 @@ Plataforma privada para publicar lecciones de **Física, Química y Biología**.
 - Solo entran alumnos con cuenta (las crea el administrador).
 - **Una sola sesión por cuenta:** si alguien entra desde otro dispositivo, el anterior se cierra solo.
 - Las lecciones **no se pueden descargar** ni abrir fuera de la plataforma, y llevan una **marca de agua con el correo** de quien las ve.
-- Cada lección puede ser **Libre** o **Premium**, y cada alumno puede tener acceso **Premium** o no.
+- Cada lección puede ser **Libre** o **Premium**. El acceso Premium se da **por materia** (por ejemplo solo Física), con fecha de vencimiento opcional.
 - Hay un **registro de accesos** con alertas de posibles cuentas compartidas.
 - **Agenda** personal de cada alumno, que ya trae los exámenes y tareas de **su salón**; cada uno agrega lo suyo, marca como hecho, oculta, y recibe recordatorios (también en el calendario del celular).
 - **Notas**: cada alumno anota sus calificaciones (privadas) y la página calcula cuánto necesita para pasar o llegar a su meta.
@@ -21,7 +21,7 @@ Tecnología: Next.js (en Vercel) + Supabase (cuentas y base de datos).
 
 1. En [supabase.com](https://supabase.com), abre tu proyecto.
 2. Ve a **SQL Editor → New query**, pega todo el contenido de [`supabase/schema.sql`](supabase/schema.sql) y pulsa **Run**.
-3. Abre otra **New query**, pega [`supabase/002_agenda_y_notas.sql`](supabase/002_agenda_y_notas.sql) y pulsa **Run** (agenda y notas). Luego lo mismo con [`supabase/003_asistente.sql`](supabase/003_asistente.sql) (asistente).
+3. Abre otra **New query**, pega [`supabase/002_agenda_y_notas.sql`](supabase/002_agenda_y_notas.sql) y pulsa **Run** (agenda y notas). Luego lo mismo con [`supabase/003_asistente.sql`](supabase/003_asistente.sql) (asistente) y [`supabase/004_acceso_por_materia.sql`](supabase/004_acceso_por_materia.sql) (acceso Premium por materia).
 4. Ve a **Authentication → Sign In / Providers** y **desactiva "Allow new users to sign up"**.
    Así nadie puede crearse una cuenta por su cuenta; solo tú desde el panel.
 
@@ -56,7 +56,7 @@ Esa página **desaparece** en cuanto existe un administrador, así que hazlo jus
 
 **Crear alumnos:** Panel → Alumnos → escribe nombre, correo y contraseña (o pulsa *Generar*) → Crear cuenta. Pásale al alumno su correo y contraseña.
 
-**Bloquear contenido:** en la lista de lecciones, pulsa **Libre / Premium** para cambiarla. En Alumnos, pulsa **Básico / Premium** para dar o quitar acceso.
+**Bloquear contenido:** en la lista de lecciones, pulsa **Libre / Premium** para cambiarla. En Alumnos, en la columna **Acceso Premium**, pulsa una materia para darle o quitarle acceso (⭐ = tiene acceso). En *Opciones* puedes dar acceso con **fecha de vencimiento** (por ejemplo, un mes pagado).
 
 **Salones y agenda:** Panel → Alumnos → crea los salones (10°A, 10°B…) y asigna cada alumno a su salón. Lo que publiques en la Agenda para un salón le aparece a todos sus alumnos. Si marcas a un alumno como **Editor**, él también puede publicar eventos para su propio salón.
 

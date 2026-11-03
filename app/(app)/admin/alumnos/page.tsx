@@ -1,10 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Classroom, Profile } from "@/lib/types";
+import type { Classroom, Profile, Subject } from "@/lib/types";
+import { todayISO } from "@/lib/time";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { deleteClassroom, deleteStudent, forceLogout, setStudentClassroom, setStudentFlag } from "../actions";
+import { deleteClassroom, deleteStudent, forceLogout, setStudentClassroom, setStudentFlag, setSubjectAccess } from "../actions";
 import { NewClassroomForm, NewStudentForm, ResetPasswordForm } from "./StudentForms";
 
-function FlagButton({ id, flag, value, on, off }: { id: string; flag: "premium" | "disabled" | "can_edit_agenda"; value: boolean; on: string; off: string }) {
+function FlagButton({ id, flag, value, on, off }: { id: string; flag: "disabled" | "can_edit_agenda"; value: boolean; on: string; off: string }) {
   return (
     <form action={setStudentFlag}>
       <input type="hidden" name="id" value={id} />
@@ -15,12 +16,44 @@ function FlagButton({ id, flag, value, on, off }: { id: string; flag: "premium" 
   );
 }
 
+type GrantRow = { user_id: string; subject_id: string; expires_at: string | null };
+const shortDate = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("es", { day: "numeric", month: "short", timeZone: "UTC" });
+
+/** Botones por materia: dorado = tiene acceso; con fecha = vence; tachado = vencido. */
+function AccessChips({ studentId, subjects, grants, today }: { studentId: string; subjects: Subject[]; grants: GrantRow[]; today: string }) {
+  return (
+    <div className="grant-chips">
+      {subjects.map((sub) => {
+        const g = grants.find((x) => x.subject_id === sub.id);
+        const expired = !!g?.expires_at && g.expires_at < today;
+        const label = g ? `${sub.name}${g.expires_at ? ` · ${expired ? "venció" : "hasta"} ${shortDate(g.expires_at)}` : ""}` : sub.name;
+        return (
+          <form key={sub.id} action={setSubjectAccess}>
+            <input type="hidden" name="id" value={studentId} />
+            <input type="hidden" name="subject_id" value={sub.id} />
+            <input type="hidden" name="grant" value={g && !expired ? "false" : "true"} />
+            <button className={`pill ${g ? (expired ? "pill-expired" : "pill-gold") : ""}`}
+              title={g && !expired ? `Quitar acceso a ${sub.name}` : `Dar acceso a ${sub.name} (sin vencimiento)`}>
+              {g && !expired ? "⭐ " : ""}{label}
+            </button>
+          </form>
+        );
+      })}
+    </div>
+  );
+}
+
 function fmt(date: string | null) {
   return date ? new Date(date).toLocaleString("es", { dateStyle: "short", timeStyle: "short" }) : "Nunca";
 }
 
 export default async function StudentsPage() {
   const { data: classrooms } = await createAdminClient().from("classrooms").select("id, name").order("name").returns<Classroom[]>();
+  const { data: subjectsData } = await createAdminClient().from("subjects").select("*").order("position").returns<Subject[]>();
+  const subjects = subjectsData ?? [];
+  const { data: grantsData, error: grantsError } = await createAdminClient().from("subject_access").select("user_id, subject_id, expires_at").returns<GrantRow[]>();
+  const grants = grantsData ?? [];
+  const today = todayISO();
   const rooms = classrooms ?? [];
   const { data: students } = await createAdminClient()
     .from("profiles")
@@ -47,7 +80,8 @@ export default async function StudentsPage() {
         <NewClassroomForm />
       </section>
 
-      <NewStudentForm classrooms={rooms} />
+      {grantsError && <p className="alert alert-error">Para dar acceso por materia, ejecuta <code>supabase/004_acceso_por_materia.sql</code> en Supabase.</p>}
+      <NewStudentForm classrooms={rooms} subjects={subjects} />
 
       <h2 className="section-title">Alumnos ({students?.length ?? 0})</h2>
       {!students?.length ? (
@@ -56,7 +90,7 @@ export default async function StudentsPage() {
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Alumno</th><th>Sesión</th><th>Salón</th><th>Acceso</th><th>Agenda</th><th>Estado</th><th>Acciones</th></tr>
+              <tr><th>Alumno</th><th>Sesión</th><th>Salón</th><th>Acceso Premium</th><th>Agenda</th><th>Estado</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               {students.map((s) => (
@@ -79,13 +113,25 @@ export default async function StudentsPage() {
                       <button className="btn btn-ghost btn-sm" title="Guardar salón">✓</button>
                     </form>
                   </td>
-                  <td><FlagButton id={s.id} flag="premium" value={s.premium} on="Premium" off="Básico" /></td>
+                  <td><AccessChips studentId={s.id} subjects={subjects} grants={grants.filter((g) => g.user_id === s.id)} today={today} /></td>
                   <td><FlagButton id={s.id} flag="can_edit_agenda" value={s.can_edit_agenda} on="Editor" off="Normal" /></td>
                   <td><FlagButton id={s.id} flag="disabled" value={s.disabled} on="Suspendido" off="Activo" /></td>
                   <td>
                     <details className="actions-menu">
                       <summary className="btn btn-ghost btn-sm">Opciones</summary>
                       <div className="actions-panel">
+                        <form action={setSubjectAccess} className="grant-form">
+                          <input type="hidden" name="id" value={s.id} />
+                          <span className="small"><b>Acceso Premium</b></span>
+                          <select name="subject_id" aria-label="Materia" defaultValue="todas">
+                            <option value="todas">Todas las materias</option>
+                            {subjects.map((sub) => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
+                          </select>
+                          <label className="small">hasta <input type="date" name="expires_at" min={today} aria-label="Vence el (opcional)" /></label>
+                          <button className="btn btn-sm btn-primary" name="grant" value="true">Dar</button>
+                          <button className="btn btn-sm" name="grant" value="false">Quitar</button>
+                        </form>
+                        <p className="small muted">Sin fecha = no vence. Con fecha, el acceso dura hasta ese día incluido.</p>
                         <ResetPasswordForm id={s.id} />
                         <div className="row-actions">
                           <form action={forceLogout}>

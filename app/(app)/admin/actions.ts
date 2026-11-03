@@ -84,7 +84,7 @@ export async function createStudent(_prev: FormState, formData: FormData): Promi
   const fullName = str(formData, "full_name");
   const email = str(formData, "email").toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const premium = formData.get("premium") === "on";
+  const subjectIds = formData.getAll("subject_access").map(String).filter((x) => UUID.test(x));
   const classroomRaw = String(formData.get("classroom_id") ?? "");
   const classroom_id = UUID.test(classroomRaw) ? classroomRaw : null;
   const values = { full_name: fullName, email, classroom_id: classroom_id ?? "" };
@@ -102,12 +102,15 @@ export async function createStudent(_prev: FormState, formData: FormData): Promi
 
   const { error: profileError } = await db
     .from("profiles")
-    .insert({ id: data.user.id, email, full_name: fullName || null, role: "student", premium, classroom_id });
+    .insert({ id: data.user.id, email, full_name: fullName || null, role: "student", premium: false, classroom_id });
   if (profileError) {
     await db.auth.admin.deleteUser(data.user.id);
     return { error: "No se pudo guardar el perfil: " + profileError.message, values };
   }
 
+  if (subjectIds.length) {
+    await db.from("subject_access").insert(subjectIds.map((subject_id) => ({ user_id: data.user!.id, subject_id })));
+  }
   revalidatePath("/admin/alumnos");
   return { ok: `Cuenta creada para ${email}. Pásale su correo y contraseña.` };
 }
@@ -193,4 +196,31 @@ export async function deleteUnknown(formData: FormData) {
   if (id === "todas") await db.from("assistant_unknown").delete().gte("count", 0);
   else if (UUID.test(id)) await db.from("assistant_unknown").delete().eq("id", id);
   revalidatePath("/admin/asistente");
+}
+
+// ---------------------------------------------------------------- Acceso Premium por materia
+
+/** Da o quita el acceso Premium a una materia (o a todas), con vencimiento opcional. */
+export async function setSubjectAccess(formData: FormData) {
+  const id = await targetStudent(formData);
+  if (!id) return;
+  const subject = str(formData, "subject_id");
+  const grant = str(formData, "grant") !== "false";
+  const expiresRaw = str(formData, "expires_at");
+  const expires_at = /^\d{4}-\d{2}-\d{2}$/.test(expiresRaw) ? expiresRaw : null;
+  const db = createAdminClient();
+
+  let subjectIds: string[] = [];
+  if (subject === "todas") {
+    const { data } = await db.from("subjects").select("id").returns<{ id: string }[]>();
+    subjectIds = (data ?? []).map((s) => s.id);
+  } else if (UUID.test(subject)) subjectIds = [subject];
+  if (!subjectIds.length) return;
+
+  if (grant) {
+    await db.from("subject_access").upsert(subjectIds.map((subject_id) => ({ user_id: id, subject_id, expires_at })));
+  } else {
+    await db.from("subject_access").delete().eq("user_id", id).in("subject_id", subjectIds);
+  }
+  revalidatePath("/admin/alumnos");
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Subject } from "@/lib/types";
+import { canSeePremium, premiumAccess } from "@/lib/access";
 import { eventsFor, kindInfo } from "@/lib/agenda";
 import { addDays, daysBetween, relativeDay, shortTime, todayISO } from "@/lib/time";
 
@@ -24,6 +25,7 @@ export default async function HomePage() {
     upcoming = [];
   }
 
+  const access = profile.role === "admin" ? "all" : await premiumAccess(profile);
   const counts = new Map<string, number>();
   lessons?.forEach((l) => counts.set(l.subject_id, (counts.get(l.subject_id) ?? 0) + 1));
   const firstName = (profile.full_name || "").split(" ")[0];
@@ -73,6 +75,7 @@ export default async function HomePage() {
               <span className="subject-watermark" aria-hidden>{ICONS[s.slug] ?? "📘"}</span>
               <span className="subject-icon" aria-hidden>{ICONS[s.slug] ?? "📘"}</span>
               <h2>{s.name}</h2>
+              {access !== "all" && canSeePremium(access, s.id) && <span className="access-chip is-on">⭐ Premium</span>}
               {s.description && <p>{s.description}</p>}
               <span className="subject-foot">
                 <span className="subject-count">{n === 1 ? "1 publicación" : `${n} publicaciones`}</span>

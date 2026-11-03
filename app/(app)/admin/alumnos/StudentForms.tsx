@@ -10,7 +10,7 @@ function randomPassword() {
   return Array.from(bytes, (b) => chars[b % chars.length]).join("");
 }
 
-export function NewStudentForm({ classrooms }: { classrooms: { id: string; name: string }[] }) {
+export function NewStudentForm({ classrooms, subjects }: { classrooms: { id: string; name: string }[]; subjects: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(createStudent, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
@@ -42,7 +42,14 @@ export function NewStudentForm({ classrooms }: { classrooms: { id: string; name:
           </select>
         </label>
       )}
-      <label className="check"><input type="checkbox" name="premium" /> Darle acceso Premium</label>
+      {subjects.length > 0 && (
+        <fieldset className="subject-checks">
+          <legend>Acceso Premium (opcional)</legend>
+          {subjects.map((s) => (
+            <label key={s.id} className="check"><input type="checkbox" name="subject_access" value={s.id} /> {s.name}</label>
+          ))}
+        </fieldset>
+      )}
       {state?.error && <p className="alert alert-error">{state.error}</p>}
       {state?.ok && <p className="alert alert-info">{state.ok}</p>}
       <button className="btn btn-primary" disabled={pending}>{pending ? "Creando…" : "Crear cuenta"}</button>

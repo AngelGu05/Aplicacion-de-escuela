@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { hasPremium, requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
+import { canSeePremium, premiumAccess } from "@/lib/access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ProtectedFrame } from "@/components/ProtectedFrame";
 import { LESSON_SUMMARY_COLUMNS, type LessonSummary, type Subject } from "@/lib/types";
@@ -19,7 +20,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
   if (!subject || !lesson || lesson.subject_id !== subject.id) notFound();
   if (!lesson.published && profile.role !== "admin") notFound();
 
-  const locked = lesson.is_premium && !hasPremium(profile);
+  const locked = lesson.is_premium && !canSeePremium(await premiumAccess(profile), subject.id);
 
   return (
     <main className="lesson-page" style={{ "--accent": subject.color } as React.CSSProperties}>
@@ -31,7 +32,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
       </div>
       {locked ? (
         <div className="container">
-          <p className="empty">🔒 Esta lección es contenido Premium. Pídele acceso al administrador.</p>
+          <p className="empty">🔒 Esta lección es contenido Premium de {subject.name}. Pídele acceso a {subject.name} al administrador.</p>
         </div>
       ) : (
         <ProtectedFrame lessonId={lesson.id} title={lesson.title} />

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { hasPremium, requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
+import { canSeePremium, premiumAccess } from "@/lib/access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LESSON_SUMMARY_COLUMNS, type LessonSummary, type Subject } from "@/lib/types";
 
@@ -20,13 +21,16 @@ export default async function SubjectPage({ params }: { params: Promise<{ slug: 
   if (profile.role !== "admin") query = query.eq("published", true);
   const { data: lessons } = await query.returns<LessonSummary[]>();
 
-  const canPremium = hasPremium(profile);
+  const canPremium = canSeePremium(await premiumAccess(profile), subject.id);
 
   return (
     <main className="container" style={{ "--accent": subject.color } as React.CSSProperties}>
       <nav className="crumbs"><Link href="/">Materias</Link> <span>/</span> {subject.name}</nav>
       <section className="page-head accent-bar">
         <h1>{subject.name}</h1>
+        {profile.role !== "admin" && (canPremium
+          ? <span className="access-chip is-on">⭐ Tienes acceso Premium a {subject.name}</span>
+          : lessons?.some((l) => l.is_premium) && <span className="access-chip">🔒 Algunas lecciones son Premium</span>)}
         {subject.description && <p className="muted">{subject.description}</p>}
       </section>
 
@@ -47,7 +51,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ slug: 
                 </div>
                 <h2>{locked && "🔒 "}{l.title}</h2>
                 {l.description && <p>{l.description}</p>}
-                {locked && <p className="locked-note">Contenido Premium — pídele acceso al administrador.</p>}
+                {locked && <p className="locked-note">Contenido Premium de {subject.name}: pídele acceso al administrador.</p>}
               </>
             );
             return (

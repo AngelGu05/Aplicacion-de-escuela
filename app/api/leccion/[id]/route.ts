@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { getSessionState, hasPremium } from "@/lib/auth";
+import { getSessionState } from "@/lib/auth";
+import { canSeePremium, premiumAccess } from "@/lib/access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildLessonDocument, simpleMessagePage } from "@/lib/protect";
 import type { Lesson } from "@/lib/types";
@@ -51,8 +52,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
   if (!lesson || (!lesson.published && profile.role !== "admin")) {
     return page(404, "No encontrada", "Esta lección no existe o ya no está disponible.");
   }
-  if (lesson.is_premium && !hasPremium(profile)) {
-    return page(403, "Contenido Premium", "Esta lección es parte del contenido Premium.");
+  if (lesson.is_premium && !canSeePremium(await premiumAccess(profile), lesson.subject_id)) {
+    return page(403, "Contenido Premium", "Esta lección es Premium y tu cuenta no tiene acceso a esta materia.");
   }
 
   if (profile.role !== "admin") {
