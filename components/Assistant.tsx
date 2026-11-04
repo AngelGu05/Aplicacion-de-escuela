@@ -104,6 +104,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
   const [ajustes, setAjustes] = useState(false);
   const [azure, setAzure] = useState(false);
   const [vozError, setVozError] = useState("");
+  const [sonandoCon, setSonandoCon] = useState("");
   const ctxAudio = useRef<AudioContext | null>(null);
   const sonando = useRef<AudioBufferSourceNode | null>(null);
   const turnoVoz = useRef(0);
@@ -179,6 +180,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
     synth.cancel();
     const lista = voces.length ? voces : vocesEspanol().sort((a, b) => puntajeVoz(b) - puntajeVoz(a));
     const elegida = lista.find((v) => v.name === vozNombre) ?? lista[0] ?? null;
+    setSonandoCon(`🔈 Sonó la voz del dispositivo${elegida ? ` (${elegida.name})` : ""}`);
     // Frases cortas suenan más naturales que un párrafo largo de un tirón
     const frases = paraVoz(text).split(/(?<=[.!?:])\s+/).filter(Boolean);
     for (const f of frases) {
@@ -230,8 +232,10 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
       src.connect(ac.destination);
       src.start();
       sonando.current = src;
+      setSonandoCon(`✅ Sonó ${voice.includes("Roberto") ? "Roberto" : "Margarita"} de Panamá (Azure)`);
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
+      if (m === "audio bloqueado" || m === "sin audio") return; // aún no hubo un toque: mejor callado que con voz robot
       if (!m.startsWith("voz ")) setVozError(`No pude reproducir el audio de Panamá en este navegador (${m}). Toca ▶ Probar voz otra vez.`);
       if (turno === turnoVoz.current) hablarNavegador(text); // sin internet, sin cuota o bloqueado: voz del navegador
     }
@@ -359,6 +363,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
                     {azure && <optgroup label="Acento panameño">{VOCES_PA.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}</optgroup>}
                     {voces.length > 0 && <optgroup label="Voces de este dispositivo">{voces.map((v) => <option key={v.name + v.lang} value={v.name}>{etiquetaVoz(v)}</option>)}</optgroup>}
                   </select>
+                  {sonandoCon && <p className="small muted" style={{ margin: 0 }}>{sonandoCon}</p>}
                   {vozError && vozElegida.startsWith("azure:") && <p className="small asis-voz-error">⚠️ {vozError} Mientras tanto uso la voz del dispositivo.</p>}
                   <label className="asis-vel">
                     <span>Velocidad</span>
