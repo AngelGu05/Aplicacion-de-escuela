@@ -80,6 +80,9 @@ const VOCES_PA = [
   { id: "azure:es-PA-MargaritaNeural", label: "Margarita · Panamá (natural)" },
   { id: "azure:es-PA-RobertoNeural", label: "Roberto · Panamá (natural)" },
 ];
+/** Voz y velocidad con las que arranca todo el mundo (la barra va de 0.8 a 1.3: 1.15 ≈ 70 %). */
+const VOZ_DEFAULT = "azure:en-US-AndrewMultilingualNeural";
+const VEL_DEFAULT = 1.15;
 /** Otras voces de Azure que suenan más humanas (las multilingües son las mejores). */
 const VOCES_AZURE = [
   { id: "azure:en-US-AvaMultilingualNeural", label: "✨ Ava · multilingüe (la más natural)" },
@@ -113,7 +116,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
   const [micOk, setMicOk] = useState(false);
   const [voces, setVoces] = useState<SpeechSynthesisVoice[]>([]);
   const [vozNombre, setVozNombre] = useState("");
-  const [velocidad, setVelocidad] = useState(1);
+  const [velocidad, setVelocidad] = useState(VEL_DEFAULT);
   const [ajustes, setAjustes] = useState(false);
   const [azure, setAzure] = useState(false);
   const [vozError, setVozError] = useState("");
@@ -131,8 +134,8 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
     setMicOk(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
     try {
       setVoz(localStorage.getItem("aula-voz") !== "0");
-      setVozNombre(localStorage.getItem("aula-voz-nombre") ?? "");
-      setVelocidad(Number(localStorage.getItem("aula-voz-velocidad") ?? "1") || 1);
+      setVozNombre(localStorage.getItem("aula-voz2-nombre") ?? "");
+      setVelocidad(Number(localStorage.getItem("aula-voz2-velocidad") ?? VEL_DEFAULT) || VEL_DEFAULT);
     } catch { /* sin almacenamiento */ }
     fetch("/api/voz").then((r) => (r.ok ? r.json() : null)).then((d) => setAzure(!!d?.enabled)).catch(() => {});
     if (!("speechSynthesis" in window)) return;
@@ -185,7 +188,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
     } catch { /* sin audio */ }
   };
 
-  const vozElegida = vozNombre || (azure ? VOCES_PA[0].id : "");
+  const vozElegida = vozNombre || (azure ? VOZ_DEFAULT : "");
 
   const hablarNavegador = useCallback((text: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
@@ -256,7 +259,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
 
   const guardarVoz = (nombre: string, vel: number) => {
     setVozNombre(nombre); setVelocidad(vel);
-    try { localStorage.setItem("aula-voz-nombre", nombre); localStorage.setItem("aula-voz-velocidad", String(vel)); } catch { /* sin almacenamiento */ }
+    try { localStorage.setItem("aula-voz2-nombre", nombre); localStorage.setItem("aula-voz2-velocidad", String(vel)); } catch { /* sin almacenamiento */ }
   };
 
   const tourGo = (step: number) => {
