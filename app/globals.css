@@ -704,3 +704,15 @@ details.card[open] > summary { margin-bottom: 14px; }
 .tool-card:hover { transform: translateY(-3px); box-shadow: 0 16px 34px -18px color-mix(in srgb, var(--accent) 70%, transparent); }
 .tool-card p { margin: 0; color: var(--muted); }
 .tool-icon { font-size: 32px; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 16px; background: color-mix(in srgb, var(--accent) 15%, var(--surface)); margin-bottom: 4px; }
+
+/* Boletín */
+.boletin { margin-bottom: 24px; }
+.boletin-table th.num, .boletin-table td.num { text-align: center; width: 70px; }
+.boletin-table td { vertical-align: middle; }
+.boletin-subject { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 600; }
+.boletin-subject i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.g-cell { display: inline-block; min-width: 42px; padding: 3px 8px; border-radius: 8px; text-decoration: none; font-weight: 700; background: var(--surface-2); color: var(--muted); }
+.g-cell.is-ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.g-cell.is-bad { background: var(--error-bg); color: var(--error-text); }
+.boletin-table tfoot th { background: var(--surface-2); font-size: .85rem; color: var(--text); text-transform: none; letter-spacing: 0; }
+@media (max-width: 640px) { .boletin-table th.num, .boletin-table td.num { width: auto; padding: 8px 4px; } .g-cell { min-width: 34px; padding: 2px 5px; } }

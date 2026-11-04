@@ -34,7 +34,7 @@ export default async function ImportPage() {
           <li>Copia con <kbd>Ctrl</kbd> + <kbd>C</kbd> (en Mac <kbd>⌘</kbd> + <kbd>C</kbd>).</li>
           <li>Pégala abajo con <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li>
         </ol>
-        <p className="small muted">Solo se guardan las notas. Nadie más que tú puede verlas.</p>
+        <p className="small muted">Hazlo una vez <b>por cada {prefs.period_label.toLowerCase()}</b>: en Seduca elige el {prefs.period_label.toLowerCase()}, copia la tabla, y aquí abajo elige el mismo número. Si lo vuelves a importar, solo se reemplaza ese {prefs.period_label.toLowerCase()}. Solo se guardan las notas; nadie más que tú puede verlas.</p>
       </details>
 
       <ImportPanel
