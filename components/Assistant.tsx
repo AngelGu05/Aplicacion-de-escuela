@@ -80,6 +80,19 @@ const VOCES_PA = [
   { id: "azure:es-PA-MargaritaNeural", label: "Margarita · Panamá (natural)" },
   { id: "azure:es-PA-RobertoNeural", label: "Roberto · Panamá (natural)" },
 ];
+/** Otras voces de Azure que suenan más humanas (las multilingües son las mejores). */
+const VOCES_AZURE = [
+  { id: "azure:en-US-AvaMultilingualNeural", label: "✨ Ava · multilingüe (la más natural)" },
+  { id: "azure:en-US-AndrewMultilingualNeural", label: "✨ Andrew · multilingüe (la más natural)" },
+  { id: "azure:en-US-EmmaMultilingualNeural", label: "✨ Emma · multilingüe" },
+  { id: "azure:en-US-BrianMultilingualNeural", label: "✨ Brian · multilingüe" },
+  { id: "azure:es-MX-DaliaNeural", label: "Dalia · México" },
+  { id: "azure:es-MX-JorgeNeural", label: "Jorge · México" },
+  { id: "azure:es-CO-SalomeNeural", label: "Salomé · Colombia" },
+  { id: "azure:es-CO-GonzaloNeural", label: "Gonzalo · Colombia" },
+  { id: "azure:es-US-PalomaNeural", label: "Paloma · Latina (EE. UU.)" },
+  { id: "azure:es-US-AlonsoNeural", label: "Alonso · Latino (EE. UU.)" },
+];
 
 type SR = {
   lang: string; interimResults: boolean; continuous: boolean;
@@ -232,7 +245,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
       src.connect(ac.destination);
       src.start();
       sonando.current = src;
-      setSonandoCon(`✅ Sonó ${voice.includes("Roberto") ? "Roberto" : "Margarita"} de Panamá (Azure)`);
+      setSonandoCon(`✅ Sonó ${[...VOCES_PA, ...VOCES_AZURE].find((v) => v.id === vozElegida)?.label.replace(/^✨ /, "").split(" (")[0] ?? voice} (Azure)`);
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
       if (m === "audio bloqueado" || m === "sin audio") return; // aún no hubo un toque: mejor callado que con voz robot
@@ -361,6 +374,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
                 <>
                   <select value={vozElegida || voces[0]?.name} onChange={(e) => { desbloquearAudio(); guardarVoz(e.target.value, velocidad); }} aria-label="Voz">
                     {azure && <optgroup label="Acento panameño">{VOCES_PA.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}</optgroup>}
+                    {azure && <optgroup label="Más naturales (Azure)">{VOCES_AZURE.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}</optgroup>}
                     {voces.length > 0 && <optgroup label="Voces de este dispositivo">{voces.map((v) => <option key={v.name + v.lang} value={v.name}>{etiquetaVoz(v)}</option>)}</optgroup>}
                   </select>
                   {sonandoCon && <p className="small muted" style={{ margin: 0 }}>{sonandoCon}</p>}

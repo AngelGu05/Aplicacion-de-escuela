@@ -7,7 +7,11 @@ export const dynamic = "force-dynamic";
  * La clave vive solo en el servidor: el navegador manda el texto y recibe el audio MP3.
  * Si no hay clave configurada, el asistente usa la voz del navegador como siempre.
  */
-const VOCES = ["es-PA-MargaritaNeural", "es-PA-RobertoNeural"] as const;
+const VOCES = [
+  "es-PA-MargaritaNeural", "es-PA-RobertoNeural",
+  "es-MX-DaliaNeural", "es-MX-JorgeNeural", "es-CO-SalomeNeural", "es-CO-GonzaloNeural", "es-US-PalomaNeural", "es-US-AlonsoNeural",
+  "en-US-AvaMultilingualNeural", "en-US-AndrewMultilingualNeural", "en-US-EmmaMultilingualNeural", "en-US-BrianMultilingualNeural",
+] as const;
 const MAX_CHARS = 700;
 
 const key = () => process.env.AZURE_SPEECH_KEY?.trim();
@@ -40,7 +44,7 @@ export async function POST(request: Request) {
   try {
     const b = await request.json();
     text = String(b?.text ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_CHARS);
-    if (VOCES.includes(b?.voice)) voice = b.voice;
+    if ((VOCES as readonly string[]).includes(b?.voice)) voice = b.voice;
     const rr = Number(b?.rate);
     if (Number.isFinite(rr)) rate = Math.min(1.5, Math.max(0.7, rr));
   } catch {
@@ -49,7 +53,7 @@ export async function POST(request: Request) {
   if (!text) return Response.json({ error: "Sin texto" }, { status: 400 });
 
   const pct = Math.round((rate - 1) * 100);
-  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="es-PA"><voice name="${voice}"><prosody rate="${pct >= 0 ? "+" : ""}${pct}%">${esc(text)}</prosody></voice></speak>`;
+  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="es-PA"><voice name="${voice}">${voice.includes("Multilingual") ? `<lang xml:lang="es-MX">` : ""}<prosody rate="${pct >= 0 ? "+" : ""}${pct}%">${esc(text)}</prosody>${voice.includes("Multilingual") ? "</lang>" : ""}</voice></speak>`;
 
   const res = await fetch(`https://${r}.tts.speech.microsoft.com/cognitiveservices/v1`, {
     method: "POST",
