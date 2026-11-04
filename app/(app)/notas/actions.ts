@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { COMMON_SUBJECTS, DEFAULT_CATEGORIES, getPrefs, normPrefs } from "@/lib/notas";
+import { COMMON_SUBJECTS, DEFAULT_CATEGORIES, getPrefs, normPrefs, seducaPosition } from "@/lib/notas";
 import type { GradeSubject, Profile } from "@/lib/types";
 import type { FormState } from "@/app/login/actions";
 
@@ -217,7 +217,7 @@ export async function importGrades(_prev: ImportState, f: FormData): Promise<Imp
     if (!subject) {
       const color = COMMON_SUBJECTS.find((c) => norm(c.name) === norm(name))?.color ?? "#2563eb";
       const { data } = await db.from("grade_subjects")
-        .insert({ user_id: profile.id, name, color, method: "ponderado", position: 50 })
+        .insert({ user_id: profile.id, name, color, method: "ponderado", position: seducaPosition(name) })
         .select("*").single<GradeSubject>();
       if (!data) continue;
       subject = data;

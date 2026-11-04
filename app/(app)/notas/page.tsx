@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { finalDecimals, fmt, neededOnPending, truncTo } from "@/lib/grades";
-import { ensureStarterSubjects, getPrefs, normCategory, normItem, normPrefs, normSubject, scaleOf, subjectSummary, SUBJECT_COLORS } from "@/lib/notas";
+import { ensureStarterSubjects, sortSubjects, getPrefs, normCategory, normItem, normPrefs, normSubject, scaleOf, subjectSummary, SUBJECT_COLORS } from "@/lib/notas";
 import type { GradeCategory, GradeItem, GradeSubject } from "@/lib/types";
 import { AddSubjectForm, PrefsForm } from "./Forms";
 import { addCommonSubjects } from "./actions";
@@ -36,7 +36,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
   const db = createAdminClient();
 
   const { data: subjectsRaw } = await db.from("grade_subjects").select("*").eq("user_id", profile.id).order("position").order("created_at").returns<GradeSubject[]>();
-  const subjects = (subjectsRaw ?? []).map(normSubject);
+  const subjects = sortSubjects((subjectsRaw ?? []).map(normSubject));
   const ids = subjects.map((s) => s.id);
   const [{ data: catsRaw }, { data: itemsRaw }] = ids.length
     ? await Promise.all([

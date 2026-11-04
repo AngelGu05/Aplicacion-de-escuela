@@ -75,3 +75,11 @@ export async function ensureStarterSubjects(profile: Profile) {
   const cats = (created ?? []).flatMap((s) => DEFAULT_CATEGORIES.map((c) => ({ ...c, subject_id: s.id })));
   if (cats.length) await db.from("grade_categories").insert(cats);
 }
+
+/** Orden de las materias igual que en Seduca. Las que no son del colegio van al final, por nombre. */
+const ordenKey = (name: string) => name.replace(/^[*\s]+/, "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+const ORDEN_SEDUCA = new Map(COMMON_SUBJECTS.map((s, i) => [ordenKey(s.name), i]));
+export const seducaPosition = (name: string) => ORDEN_SEDUCA.get(ordenKey(name)) ?? 100;
+export function sortSubjects<T extends { name: string; position?: number }>(subjects: T[]): T[] {
+  return [...subjects].sort((a, b) => seducaPosition(a.name) - seducaPosition(b.name) || (a.position ?? 0) - (b.position ?? 0) || a.name.localeCompare(b.name, "es"));
+}

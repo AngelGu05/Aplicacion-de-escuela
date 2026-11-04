@@ -1,6 +1,6 @@
 import { createAdminClient } from "../supabase/admin";
 import { eventsFor } from "../agenda";
-import { getPrefs, normCategory, normItem, normPrefs, normSubject, scaleOf } from "../notas";
+import { getPrefs, normCategory, normItem, normPrefs, normSubject, scaleOf, sortSubjects } from "../notas";
 import { addDays, todayISO } from "../time";
 import type { GradeCategory, GradeItem, GradeSubject, Profile } from "../types";
 import type { Contexto } from "./motor";
@@ -11,7 +11,7 @@ export async function cargarContexto(profile: Profile): Promise<Contexto> {
   const today = todayISO();
   const prefs = normPrefs(await getPrefs(profile));
   const { data: subjRaw } = await db.from("grade_subjects").select("*").eq("user_id", profile.id).order("position").returns<GradeSubject[]>();
-  const subjects = (subjRaw ?? []).map(normSubject);
+  const subjects = sortSubjects((subjRaw ?? []).map(normSubject));
   const ids = subjects.map((s) => s.id);
   const [{ data: cats }, { data: items }] = ids.length
     ? await Promise.all([
