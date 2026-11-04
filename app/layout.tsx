@@ -11,15 +11,16 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1117" },
-  ],
+  themeColor: "#060a13",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" data-theme="dark" suppressHydrationWarning>
+      <head>
+        {/* Aplica el tema guardado antes de pintar, para que no parpadee */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("aula-tema")==="light")document.documentElement.dataset.theme="light"}catch(e){}` }} />
+      </head>
       <body>
         <ScienceBackdrop />
         {children}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { logout } from "@/app/login/actions";
 import type { Profile } from "@/lib/types";
 import { NavLinks } from "./NavLinks";
+import { ThemeToggle } from "./ThemeToggle";
 import { canSeeLessons } from "@/lib/access";
 
 export function Header({ profile, alerts }: { profile: Profile; alerts: number }) {
@@ -16,6 +17,7 @@ export function Header({ profile, alerts }: { profile: Profile; alerts: number }
           </Link>
           <NavLinks isAdmin={profile.role === "admin"} alerts={alerts} variant="top" lessons={canSeeLessons(profile)} />
           <div className="topbar-user">
+            <ThemeToggle />
             <span className="user-chip" title={profile.email}>{name}</span>
             <form action={logout}>
               <button className="btn btn-ghost btn-sm">Salir</button>
