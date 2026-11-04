@@ -77,8 +77,8 @@ const etiquetaVoz = (v: SpeechSynthesisVoice) => {
 
 /** Voces panameñas naturales (Azure). Solo aparecen si el administrador configuró la clave. */
 const VOCES_PA = [
-  { id: "azure:es-PA-MargaritaNeural", label: "🇵🇦 Margarita · Panamá (natural)" },
-  { id: "azure:es-PA-RobertoNeural", label: "🇵🇦 Roberto · Panamá (natural)" },
+  { id: "azure:es-PA-MargaritaNeural", label: "Margarita · Panamá (natural)" },
+  { id: "azure:es-PA-RobertoNeural", label: "Roberto · Panamá (natural)" },
 ];
 
 type SR = {
