@@ -103,6 +103,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
   const [velocidad, setVelocidad] = useState(1);
   const [ajustes, setAjustes] = useState(false);
   const [azure, setAzure] = useState(false);
+  const [vozError, setVozError] = useState("");
   const ctxAudio = useRef<AudioContext | null>(null);
   const sonando = useRef<AudioBufferSourceNode | null>(null);
   const turnoVoz = useRef(0);
@@ -207,7 +208,18 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
       let buf = cacheVoz.current.get(k);
       if (!buf) {
         const r = await fetch("/api/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: limpio, voice, rate: velocidad }) });
-        if (!r.ok) throw new Error("voz " + r.status);
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          const code = Number(d?.azure ?? r.status);
+          setVozError(
+            code === 401 ? "Azure rechazó la clave (error 401). Revisa en Vercel que AZURE_SPEECH_KEY sea la Clave 1 completa y que AZURE_SPEECH_REGION sea la región del recurso (eastus)."
+            : code === 403 || code === 429 ? `Azure no dejó usar la voz ahora (error ${code}): se acabó la cuota gratis del mes o hubo demasiadas solicitudes.`
+            : code === 503 ? "La voz de Panamá no está configurada en el servidor."
+            : code === 0 ? "El servidor no pudo conectarse con Azure. Revisa que AZURE_SPEECH_REGION sea exactamente eastus."
+            : `No se pudo usar la voz de Panamá (error ${code}).`);
+          throw new Error("voz " + code);
+        }
+        setVozError("");
         buf = await ac.decodeAudioData(await r.arrayBuffer());
         cacheVoz.current.set(k, buf);
         if (cacheVoz.current.size > 25) cacheVoz.current.delete(cacheVoz.current.keys().next().value!);
@@ -218,7 +230,9 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
       src.connect(ac.destination);
       src.start();
       sonando.current = src;
-    } catch {
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      if (!m.startsWith("voz ")) setVozError(`No pude reproducir el audio de Panamá en este navegador (${m}). Toca ▶ Probar voz otra vez.`);
       if (turno === turnoVoz.current) hablarNavegador(text); // sin internet, sin cuota o bloqueado: voz del navegador
     }
   }, [voz, azure, vozElegida, velocidad, callar, hablarNavegador]);
@@ -345,6 +359,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
                     {azure && <optgroup label="Acento panameño">{VOCES_PA.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}</optgroup>}
                     {voces.length > 0 && <optgroup label="Voces de este dispositivo">{voces.map((v) => <option key={v.name + v.lang} value={v.name}>{etiquetaVoz(v)}</option>)}</optgroup>}
                   </select>
+                  {vozError && vozElegida.startsWith("azure:") && <p className="small asis-voz-error">⚠️ {vozError} Mientras tanto uso la voz del dispositivo.</p>}
                   <label className="asis-vel">
                     <span>Velocidad</span>
                     <input type="range" min={0.8} max={1.3} step={0.05} value={velocidad} onChange={(e) => guardarVoz(vozElegida || voces[0]?.name, Number(e.target.value))} />

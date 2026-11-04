@@ -794,3 +794,4 @@ details.card[open] > summary { margin-bottom: 14px; }
 .item-name-input { width: 150px !important; padding: 6px 8px !important; font-size: .85rem; border-style: dashed !important; }
 .item-list li { grid-template-columns: 1fr auto; }
 @media (max-width: 560px) { .item-name-input { width: 110px !important; } }
+.asis-voz-error { margin: 0; color: #f87171; line-height: 1.35; }

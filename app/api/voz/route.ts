@@ -63,8 +63,9 @@ export async function POST(request: Request) {
   }).catch(() => null);
 
   if (!res || !res.ok) {
-    console.error("Azure TTS:", res?.status, await res?.text().catch(() => ""));
-    return Response.json({ error: "No se pudo generar la voz" }, { status: 502 });
+    const detalle = await res?.text().catch(() => "");
+    console.error("Azure TTS:", res?.status, detalle);
+    return Response.json({ error: "No se pudo generar la voz", azure: res?.status ?? 0 }, { status: 502 });
   }
   return new Response(await res.arrayBuffer(), {
     headers: { "Content-Type": "audio/mpeg", "Cache-Control": "private, max-age=86400" },
