@@ -26,8 +26,8 @@ export default async function ImportPage() {
         <p>Copia tu tabla de calificaciones de Seduca y pégala aquí: tus notas se llenan solas.</p>
       </section>
 
-      <details className="card how-to" open>
-        <summary><b>¿Cómo copio la tabla?</b></summary>
+      <details className="card how-to">
+        <summary><b>¿Cómo copio la tabla?</b> <span className="small muted">(o usa el <Link href="/conectar-seduca">botón 📥 Enviar a Aula</Link>, con un clic)</span></summary>
         <ol>
           <li>Abre Seduca en una <b>computadora</b> y entra a tus <b>calificaciones</b>.</li>
           <li>Con el mouse, selecciona la tabla desde la primera materia hasta la última nota de la última materia.</li>

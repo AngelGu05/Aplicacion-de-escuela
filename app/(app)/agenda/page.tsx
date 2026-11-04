@@ -70,6 +70,9 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
         <span className="hero-kicker">{myRoom ? `Salón ${myRoom}` : "Mi agenda"}</span>
         <h1>Agenda 🗓️</h1>
         <p>Exámenes, tareas y proyectos de tu salón, más lo que tú agregues.</p>
+        <div className="hero-actions">
+          <Link href="/conectar-seduca" className="btn btn-sm">📥 Traer mi agenda de Seduca</Link>
+        </div>
       </section>
 
       <div className="agenda-layout">

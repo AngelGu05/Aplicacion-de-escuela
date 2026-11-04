@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { readBookmarkletPayload } from "@/lib/bookmarklet";
 import Link from "next/link";
 import { importGrades, type ImportState } from "../actions";
 import { parseSeduca, normalizeName } from "@/lib/seduca";
@@ -15,6 +16,18 @@ export function ImportPanel({ periods, periodLabel, defaultPeriod, existing, dec
   const [state, action, pending] = useActionState<ImportState, FormData>(importGrades, undefined);
   const parsed = useMemo(() => (text.trim() ? parseSeduca(text) : null), [text]);
   const known = useMemo(() => new Set(existing.map(normalizeName)), [existing]);
+  const [periodo, setPeriodo] = useState(String(defaultPeriod));
+  const [delBoton, setDelBoton] = useState(false);
+  useEffect(() => {
+    const data = readBookmarkletPayload();
+    if (data?.tipo === "notas" && typeof data.texto === "string") {
+      setText(data.texto);
+      setDelBoton(true);
+      const b = Number(data.bimestre);
+      if (b >= 1 && b <= periods) setPeriodo(String(b));
+      history.replaceState(null, "", window.location.pathname);
+    }
+  }, [periods]);
 
   if (state?.ok) {
     return (
@@ -32,7 +45,8 @@ export function ImportPanel({ periods, periodLabel, defaultPeriod, existing, dec
   return (
     <form action={action} className="import-form">
       <section className="card">
-        <h2 className="h-card">1. Pega la tabla de Seduca</h2>
+        <h2 className="h-card">{delBoton ? "1. ✅ Llegó tu tabla de Seduca" : "1. Pega la tabla de Seduca"}</h2>
+        {!delBoton && <p className="small muted">¿Quieres hacerlo con un clic? <Link href="/conectar-seduca">Instala el botón 📥 Enviar a Aula</Link>.</p>}
         <textarea
           className="paste-box" rows={7} value={text} onChange={(e) => setText(e.target.value)}
           placeholder={"Pega aquí (Ctrl + V) la tabla de calificaciones que copiaste de Seduca…"}
@@ -81,7 +95,7 @@ export function ImportPanel({ periods, periodLabel, defaultPeriod, existing, dec
           <div className="form-row">
             <label className="field">
               <span>{periodLabel}</span>
-              <select name="period" defaultValue={String(defaultPeriod)}>
+              <select name="period" value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
                 {Array.from({ length: periods }, (_, i) => <option key={i} value={i + 1}>{periodLabel} {i + 1}</option>)}
               </select>
             </label>

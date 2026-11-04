@@ -30,6 +30,7 @@ export function EventCard({ e, today, classroomName, compact }: { e: MyEvent; to
           <span className={`tag tag-kind kind-${e.kind}`}>{k.label}</span>
           {e.subject && <span className="tag">{e.subject}</span>}
           <span className="tag tag-scope">{e.scope === "personal" ? "Personal" : classroomName ? `Salón ${classroomName}` : "Todos"}</span>
+          {(e as { source?: string | null }).source === "seduca" && <span className="tag tag-seduca">Seduca</span>}
           {reminder && <span className="tag tag-bell">🔔 {relativeDay(e.event_date, today)}</span>}
         </div>
         <h3>{e.title}</h3>

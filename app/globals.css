@@ -716,3 +716,15 @@ details.card[open] > summary { margin-bottom: 14px; }
 .g-cell.is-bad { background: var(--error-bg); color: var(--error-text); }
 .boletin-table tfoot th { background: var(--surface-2); font-size: .85rem; color: var(--text); text-transform: none; letter-spacing: 0; }
 @media (max-width: 640px) { .boletin-table th.num, .boletin-table td.num { width: auto; padding: 8px 4px; } .g-cell { min-width: 34px; padding: 2px 5px; } }
+
+/* Conectar con Seduca */
+.bm-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 12px 0; }
+.bm-button { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 999px; font-weight: 800; text-decoration: none; cursor: grab; color: #fff; background: linear-gradient(135deg, var(--fis), #7c3aed); box-shadow: 0 8px 20px -8px rgba(37,99,235,.7); }
+.bm-button:active { cursor: grabbing; }
+.steps-ol { display: grid; gap: 8px; padding-left: 20px; margin: 0 0 10px; }
+.seduca-days { display: grid; gap: 10px; max-height: 420px; overflow-y: auto; }
+.seduca-day > b { font-size: .85rem; text-transform: capitalize; color: var(--muted); }
+.seduca-day ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; }
+.seduca-day li { padding: 6px 10px; border-radius: 8px; border-left: 4px solid var(--k); background: color-mix(in srgb, var(--k) 8%, transparent); font-size: .9rem; }
+.seduca-day .tag { margin-left: 6px; }
+.tag-seduca { background: color-mix(in srgb, #0ea5e9 16%, transparent); color: #0369a1; }
