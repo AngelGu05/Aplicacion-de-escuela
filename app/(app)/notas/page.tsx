@@ -26,12 +26,14 @@ function withPendingBimestral(cats: GradeCategory[], items: GradeItem[], period:
   return [...items, { id: "virtual", subject_id: subjectId, category_id: bim.id, period, name: "Bimestral", score: null }];
 }
 
-export default async function NotasPage({ searchParams }: { searchParams: Promise<{ b?: string }> }) {
+export default async function NotasPage({ searchParams }: { searchParams: Promise<{ b?: string; d?: string }> }) {
   const profile = await requireUser();
   await ensureStarterSubjects(profile);
   const prefs = normPrefs(await getPrefs(profile));
-  const bRaw = Number((await searchParams).b);
-  const vista = bRaw >= 1 && bRaw <= prefs.periods ? bRaw : 0; // 0 = general
+  const sp = await searchParams;
+  const detalle = sp.d !== undefined; // vista "Detalle" (todas las notas, como en Seduca)
+  const bRaw = Number(sp.b);
+  const vista = !detalle && bRaw >= 1 && bRaw <= prefs.periods ? bRaw : 0; // 0 = general
   const scale = scaleOf(prefs);
   const db = createAdminClient();
 
@@ -59,6 +61,10 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
   const perPeriod = periodNums.map((p) => avg(rows.map((r) => r.grades[p - 1])));
   const label = prefs.period_label;
   const ini = label.slice(0, 1);
+  const lastWithItems = Math.max(1, ...items.map((i) => i.period));
+  const dNum = Number(sp.d);
+  const detPeriod = dNum >= 1 && dNum <= prefs.periods ? dNum : Math.min(prefs.periods, lastWithItems);
+  const chipCls = (x: number | null) => x == null ? "is-pending" : x >= 4.5 ? "is-top" : x >= 4 ? "is-good" : x >= prefs.pass_mark ? "is-mid" : "is-low";
 
   return (
     <main className="container">
@@ -73,7 +79,8 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
 
       {rows.length > 0 && (
         <nav className="tabs period-tabs">
-          <Link href="/notas" className={`tab ${vista === 0 ? "is-active" : ""}`}>📋 General</Link>
+          <Link href="/notas" className={`tab ${vista === 0 && !detalle ? "is-active" : ""}`}>📋 General</Link>
+          <Link href={`/notas?d=${detPeriod}`} className={`tab ${detalle ? "is-active" : ""}`}>🔎 Detalle</Link>
           {periodNums.map((p) => (
             <Link key={p} href={`/notas?b=${p}`} className={`tab ${vista === p ? "is-active" : ""}`}>
               {label} {p} <span className="tab-grade">{fmt(perPeriod[p - 1], fd)}</span>
@@ -84,7 +91,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
 
       {rows.length > 0 && (
         <div className="stat-row">
-          <div className="stat"><span>{vista ? `Promedio del ${label.toLowerCase()} ${vista}` : "Promedio general del año"}</span><b>{fmt(overall, fd)}</b></div>
+          <div className="stat"><span>{detalle ? `Promedio del ${label.toLowerCase()} ${detPeriod}` : vista ? `Promedio del ${label.toLowerCase()} ${vista}` : "Promedio general del año"}</span><b>{fmt(detalle ? perPeriod[detPeriod - 1] : overall, fd)}</b></div>
           <div className="stat"><span>Materias</span><b>{rows.length}</b></div>
           <div className={`stat ${atRisk ? "stat-warn" : "stat-ok"}`}><span>En riesgo</span><b>{atRisk}</b></div>
           <div className="stat"><span>Escala</span><b className="stat-sm">{prefs.scale_min}–{prefs.scale_max} · pasa {prefs.pass_mark}</b></div>
@@ -102,7 +109,53 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         </section>
       ) : (
         <>
-        {vista === 0 && (
+        {detalle && (
+          <section className="detalle">
+            <div className="detalle-head">
+              <h2 className="section-title">🔎 Todas tus notas · {label} {detPeriod}</h2>
+              <div className="seg-pills">
+                {periodNums.map((p) => <Link key={p} href={`/notas?d=${p}`} className={`pill ${p === detPeriod ? "pill-on" : ""}`}>{ini}{p}</Link>)}
+              </div>
+            </div>
+            <div className="detalle-list">
+              {rows.filter(({ s }) => items.some((i) => i.subject_id === s.id && i.period === detPeriod)).map(({ s, grades, target }) => {
+                const sc = cats.filter((c) => c.subject_id === s.id).sort((a, b) => a.position - b.position);
+                const its = items.filter((i) => i.subject_id === s.id && i.period === detPeriod);
+                const g = grades[detPeriod - 1];
+                const partes = s.method === "ponderado" && sc.length ? sc.map((c) => ({ id: c.id, name: c.name, list: its.filter((i) => i.category_id === c.id) })) : [{ id: "all", name: "Notas", list: its }];
+                return (
+                  <Link key={s.id} href={`/notas/${s.id}?p=${detPeriod}`} className="detalle-row" style={{ "--accent": s.color } as React.CSSProperties}>
+                    <div className="detalle-subject"><i />{s.name}</div>
+                    <div className="detalle-parts">
+                      {partes.map((pt) => {
+                        const vals = pt.list.map((i) => i.score).filter((x): x is number => x != null);
+                        const prom = vals.length ? truncTo(vals.reduce((a, b) => a + b, 0) / vals.length, scale.decimals) : null;
+                        return (
+                          <div key={pt.id} className="detalle-part">
+                            <span className="detalle-part-name">{pt.name}</span>
+                            <span className="detalle-chips">
+                              {pt.list.length ? pt.list.map((i) => <span key={i.id} className={`nchip ${chipCls(i.score)}`} title={i.name}>{fmt(i.score, scale.decimals)}</span>) : <span className="muted small">—</span>}
+                            </span>
+                            {prom != null && <b className={`detalle-prom ${chipCls(prom)}`}>{fmt(prom, scale.decimals)}</b>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="detalle-final"><span>{label}</span><b className={g == null ? "" : g >= target ? "text-ok" : "text-error"}>{fmt(g, scale.decimals)}</b></div>
+                  </Link>
+                );
+              })}
+            </div>
+            {(() => {
+              const vacias = rows.filter(({ s }) => !items.some((i) => i.subject_id === s.id && i.period === detPeriod));
+              return vacias.length ? (
+                <p className="small muted">Sin notas en el {label.toLowerCase()} {detPeriod}: {vacias.map(({ s }, k) => <span key={s.id}>{k ? ", " : ""}<Link href={`/notas/${s.id}?p=${detPeriod}`}>{s.name}</Link></span>)}.</p>
+              ) : null;
+            })()}
+            <p className="small muted">Toca una materia para ver el detalle y <b>simular</b> tus próximas notas. Verde oscuro ≥ 4.5 · verde ≥ 4.0 · amarillo ≥ {prefs.pass_mark} · rojo &lt; {prefs.pass_mark} · azul = pendiente.</p>
+          </section>
+        )}
+        {vista === 0 && !detalle && (
           <section className="boletin">
             <h2 className="section-title">📋 Boletín</h2>
             <div className="table-wrap">
@@ -159,8 +212,8 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
             })}
           </div>
         )}
-        {vista === 0 && <h2 className="section-title">Por materia</h2>}
-        {vista === 0 && (
+        {vista === 0 && !detalle && <h2 className="section-title">Por materia</h2>}
+        {vista === 0 && !detalle && (
         <div className="grade-grid">
           {rows.map(({ s, grades, target, year }) => {
             const st = STATUS[year.status];

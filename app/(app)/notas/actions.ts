@@ -157,8 +157,15 @@ export async function updateItemScore(f: FormData) {
   const prefs = normPrefs(await getPrefs(profile));
   const score = numOrNull(str(f, "score"));
   if (score != null && (Number.isNaN(score) || score < prefs.scale_min || score > prefs.scale_max)) return;
-  await createAdminClient().from("grade_items").update({ score }).eq("id", id).eq("subject_id", s.id);
+  const update: Record<string, unknown> = { score };
+  if (f.has("name")) update.name = str(f, "name").slice(0, 60);
+  await createAdminClient().from("grade_items").update(update).eq("id", id).eq("subject_id", s.id);
   done(s.id);
+}
+
+/** Guarda una nota que estaba simulada como nota real. */
+export async function addItemQuick(f: FormData) {
+  await addItem(undefined, f);
 }
 
 export async function deleteItem(f: FormData) {

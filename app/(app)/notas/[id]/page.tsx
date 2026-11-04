@@ -29,6 +29,16 @@ export default async function SubjectGradesPage({ params, searchParams }: { para
   const cats = (catsRaw ?? []).map(normCategory);
   const items = (itemsRaw ?? []).map(normItem);
   const { grades, target, year } = subjectSummary(subject, cats, items, prefs);
+  // Notas finales de las demás materias, para que el simulador muestre el promedio general
+  const { data: otherSubs } = await db.from("grade_subjects").select("*").eq("user_id", profile.id).neq("id", id).returns<GradeSubject[]>();
+  const otherIds = (otherSubs ?? []).map((x) => x.id);
+  const [{ data: oc }, { data: oi }] = otherIds.length
+    ? await Promise.all([
+        db.from("grade_categories").select("*").in("subject_id", otherIds).returns<GradeCategory[]>(),
+        db.from("grade_items").select("*").in("subject_id", otherIds).returns<GradeItem[]>(),
+      ])
+    : [{ data: [] as GradeCategory[] }, { data: [] as GradeItem[] }];
+  const otherFinals = (otherSubs ?? []).map((o) => subjectSummary(normSubject(o), (oc ?? []).filter((c) => c.subject_id === o.id).map(normCategory), (oi ?? []).filter((i) => i.subject_id === o.id).map(normItem), prefs).year.average);
 
   // Periodo activo: el pedido, o el más reciente que ya tiene notas
   const lastWithItems = Math.max(0, ...items.map((i) => i.period));
@@ -86,8 +96,8 @@ export default async function SubjectGradesPage({ params, searchParams }: { para
             </div>
           </div>
 
-          <Simulator method={subject.method} cats={cats} items={periodItems} scale={scale} target={target}
-            periodIndex={period - 1} otherGrades={grades} periodLabel={prefs.period_label} />
+          <Simulator key={`${id}-${period}-${periodItems.length}`} subjectId={id} method={subject.method} cats={cats} items={periodItems} scale={scale} target={target}
+            passMark={prefs.pass_mark} periodIndex={period - 1} periodGrades={grades} otherFinals={otherFinals} periodLabel={prefs.period_label} />
 
           {groups.map((g) => (
             <div key={g.key} className="item-group">
@@ -96,10 +106,10 @@ export default async function SubjectGradesPage({ params, searchParams }: { para
                 <ul className="item-list">
                   {g.list.map((it) => (
                     <li key={it.id} className={it.score == null ? "is-pending" : it.score >= target ? "is-ok" : "is-bad"}>
-                      <span className="item-name">{it.name || (it.score == null ? "Pendiente" : "Nota")}</span>
-                      <form action={updateItemScore} className="item-score">
+                      <form action={updateItemScore} className="item-score item-edit">
                         <input type="hidden" name="id" value={it.id} />
                         <input type="hidden" name="subject_id" value={id} />
+                        <input name="name" className="item-name-input" defaultValue={it.name} placeholder={it.score == null ? "Pendiente" : "Nombre (ej. Quiz 1)"} aria-label="Nombre de la nota" maxLength={60} />
                         <input name="score" inputMode="decimal" defaultValue={it.score ?? ""} placeholder="—" title="Vacía = pendiente" aria-label="Nota (vacía = pendiente)" />
                         <button className="btn btn-ghost btn-sm" title="Guardar">✓</button>
                       </form>

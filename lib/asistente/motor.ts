@@ -332,13 +332,95 @@ function rFecha(q: string, ctx: Contexto, t: Tono): Respuesta | null {
   return { understood: true, text: `${cap(relLabel(r.from, ctx.today).replace(/^el /, "El "))} es **${dateLong(r.from)}**.${extra}` };
 }
 
+
+// ---------------------------------------------------------------- Simular una nota nueva
+
+/** ¿En qué parte cae “el próximo quiz / la tarea / el bimestral…”? (se mira el texto original, antes de la jerga). */
+const PARTES: [RegExp, RegExp][] = [
+  [/bimestral|examen final|examen del bimestre|prueba final/, /bimestral|final/],
+  [/digitacion|ejercicio|escrito|parcial|redaccion|exercise|prueba corta|dictado/, /digitacion/],
+  [/apreciacion|quiz|tarea|trabajo|taller|lamina|mural|participacion|proyecto|laboratorio|\blab\b|cuaderno|exposicion|investigacion|practica|maqueta|portafolio/, /apreciacion/],
+];
+
+function parteDe(raw: string, s: SubjectData, items: GradeItem[]): GradeItem["category_id"] | undefined {
+  const r = stripAccents(raw.toLowerCase());
+  const cats = s.cats.map((c) => ({ c, n: stripAccents(c.name.toLowerCase()) }));
+  // 1) El alumno nombró la parte tal cual (también sirve para partes personalizadas).
+  const directa = cats.find(({ n }) => n.length > 2 && r.includes(n));
+  if (directa) return directa.c.id;
+  // 2) Por el tipo de evaluación.
+  for (const [tipo, parte] of PARTES) if (tipo.test(r)) { const m = cats.find(({ n }) => parte.test(n)); if (m) return m.c.id; }
+  // 3) "examen"/"prueba" a secas: el bimestral si aún no lo tiene, si no Digitación.
+  if (/\b(examen|prueba)\b/.test(r)) {
+    const bim = cats.find(({ n }) => /bimestral|final/.test(n));
+    if (bim && !items.some((i) => i.category_id === bim.c.id && i.score != null)) return bim.c.id;
+    return cats.find(({ n }) => /digitacion/.test(n))?.c.id;
+  }
+  return undefined;
+}
+
+/**
+ * “¿Y si saco 4 en el próximo quiz de Física?” → agrega una nota nueva (virtual) a esa parte
+ * y dice cómo quedan la parte, el bimestre y la nota final del año.
+ * Devuelve null si la pregunta es sobre la nota pendiente de siempre.
+ */
+function simularNueva(raw: string, q: string, e: Estado, x: number, ctx: Contexto, t: Tono, link: { href: string; label: string }): Respuesta | null {
+  const s = e.s;
+  const reales = s.items.filter((i) => i.period === e.period && i.score != null);
+  const ponderado = s.method === "ponderado" && s.cats.some((c) => c.weight > 0);
+  const pideNueva = has(q, /\b(proxim[oa]|siguiente|otr[oa]|nuev[oa])\b/);
+  const cat = ponderado ? parteDe(raw, s, reales) : null;
+  if (cat === undefined && !pideNueva) return null; // "si saco 3 en mate" → la nota pendiente (o el bimestral que falta)
+
+  const per = ctx.periodLabel.toLowerCase();
+  const antes = periodGrade(s.method, s.cats, reales, undefined, ctx.scale.decimals);
+  const conNota = (catId: string | null) => [...reales, { id: "sim", subject_id: s.id, category_id: catId, period: e.period, name: "Simulada", score: x }];
+  const anual = (g: number | null) => yearSummary(
+    Array.from({ length: ctx.periods }, (_, i) => (i + 1 === e.period ? g : periodGrade(s.method, s.cats, s.items.filter((it) => it.period === i + 1), undefined, ctx.scale.decimals))),
+    ctx.passMark, ctx.scale).average;
+  const flecha = (a: number | null, b: number | null) => (a == null || b == null || a === b ? "" : b > a ? " ▲" : " ▼");
+  const promParte = (list: GradeItem[], catId: string) => {
+    const v = list.filter((i) => i.category_id === catId && i.score != null).map((i) => i.score!);
+    return v.length ? periodGrade("promedio", [], list.filter((i) => i.category_id === catId), undefined, ctx.scale.decimals) : null;
+  };
+
+  // No dijo en qué parte: muestra las tres opciones.
+  if (ponderado && cat === undefined) {
+    const lineas = s.cats.filter((c) => c.weight > 0).map((c) => {
+      const g = periodGrade(s.method, s.cats, conNota(c.id), undefined, ctx.scale.decimals);
+      return `• En **${c.name}** → ${per} **${f(g, ctx)}**${flecha(antes, g)}`;
+    });
+    return { understood: true, links: [link], text: `Si sacas **${f(x, ctx)}** en una nota nueva de **${s.name}** (llevas **${f(antes, ctx)}** en el ${per} ${e.period}):\n${lineas.join("\n")}\n${pick(t, "Dime si es quiz, tarea o bimestral y te lo saco exacto. 😉", "Dime si es quiz, tarea o bimestral y te lo calculo exacto. 😉")}` };
+  }
+
+  const nuevos = conNota(cat ?? null);
+  const g = periodGrade(s.method, s.cats, nuevos, undefined, ctx.scale.decimals);
+  const finAntes = anual(antes), finDesp = anual(g);
+  const parte = cat ? s.cats.find((c) => c.id === cat) : null;
+  const pa = parte ? promParte(reales, parte.id) : null, pd = parte ? promParte(nuevos, parte.id) : null;
+  const trozos = [
+    parte ? `**${parte.name}** ${pa == null ? "(sin notas)" : f(pa, ctx)} → **${f(pd, ctx)}**${flecha(pa, pd)}` : null,
+    `${ctx.periodLabel} ${e.period}: ${f(antes, ctx)} → **${f(g, ctx)}**${flecha(antes, g)}`,
+    finDesp != null ? `Nota final del año: ${f2(finAntes, ctx)} → **${f2(finDesp, ctx)}**` : null,
+  ].filter(Boolean);
+  const veredicto = g == null ? "" : g >= e.target
+    ? (e.target === ctx.passMark ? pick(t, " Pasas. ✅", " Apruebas. ✅") : pick(t, ` Llegas a tu meta de ${f(e.target, ctx)}. 🎯`, ` Llegas a tu meta de ${f(e.target, ctx)}. 🎯`))
+    : g >= ctx.passMark ? pick(t, ` Pasas, pero no llegas a tu meta de ${f(e.target, ctx)}.`, ` Apruebas, pero no llegas a tu meta de ${f(e.target, ctx)}.`)
+    : pick(t, " Ayala, así no te alcanza pa' pasar. ❌", " Así no te alcanza para aprobar. ❌");
+  return {
+    understood: true,
+    links: [{ href: `/notas/${s.id}?p=${e.period}`, label: "Simular más en la página" }],
+    text: `Si sacas **${f(x, ctx)}** en ${parte ? (/bimestral/i.test(parte.name) && pa == null ? "el bimestral" : `una nota nueva de ${parte.name}`) : "una nota nueva"} de **${s.name}**:\n• ${trozos.join("\n• ")}\n${veredicto.trim()}`,
+  };
+}
+
 // ---------------------------------------------------------------- Notas
 
-function rMateria(q: string, s: SubjectData, ctx: Contexto, t: Tono): Respuesta {
+function rMateria(q: string, s: SubjectData, ctx: Contexto, t: Tono, raw = q): Respuesta {
   const e = estado(s, ctx);
   const link = { href: `/notas/${s.id}`, label: `Abrir ${s.name}` };
   const meta = q.match(/\b(?:sacar|quedar(?: con| en)?|llegar a|subir(?:la)? a|tener|para)\s+(?:un |una )?([1-9](?:\.\d)?|10)\b/);
-  const siSaco = q.match(/\bsi saco (?:un |una )?([0-9](?:\.\d)?|10)\b/) ?? q.match(/\bsaco (?:un |una )?([0-9](?:\.\d)?|10)\b/);
+  const siSaco = q.match(/\bsi (?:me )?saco (?:un |una )?([0-9](?:\.\d)?|10)\b/) ?? q.match(/\bsaco (?:un |una )?([0-9](?:\.\d)?|10)\b/);
 
   if (e.grade == null && !s.items.length) {
     return { understood: true, links: [{ href: "/notas/importar", label: "Importar desde Seduca" }, link], text: pick(t, `Todavía no tienes notas en **${s.name}**, fren. Ponlas o impórtalas de Seduca y te digo cuánto necesitas.`, `Aún no tienes notas en **${s.name}**. Agrégalas o impórtalas desde Seduca y te digo cuánto necesitas.`) };
@@ -348,6 +430,8 @@ function rMateria(q: string, s: SubjectData, ctx: Contexto, t: Tono): Respuesta 
   if (siSaco) {
     const x = Number(siSaco[1]);
     if (x < ctx.scale.min || x > ctx.scale.max) return { understood: true, text: `Esa nota está fuera de la escala (${ctx.scale.min} a ${ctx.scale.max}).` };
+    const nueva = simularNueva(raw, q, e, x, ctx, t, link);
+    if (nueva) return nueva;
     const items = withVirtual(e);
     if (!items.some((i) => i.score == null)) return { understood: true, links: [link], text: `En **${s.name}** no tienes notas pendientes este ${ctx.periodLabel.toLowerCase()}: llevas **${f(e.grade, ctx)}**.` };
     const g = periodGrade(s.method, s.cats, items, x, ctx.scale.decimals);
@@ -601,7 +685,7 @@ function responderBase(raw: string, ctx: Contexto): Respuesta {
   if (has(q, /\bmas (cosas|pesado|cargado|libre|tranquilo)\b/, /\bmismo dia\b/, /\bme conviene estudiar\b/)) return rDiaOcupado(q, ctx, t);
 
   // Agenda: ¿cuándo es…?
-  if (has(q, /\bcuando (es|son|hay|tengo|entrego|toca|cae)\b/, /\bproxim[oa] (examen|tarea|entrega|proyecto)\b/, /\blo proximo\b/, /\bque es lo proximo\b/, /\ba que hora\b/, /\bcual es (mi|el) proxim/)) return rCuando(q, ctx, t);
+  if (!has(q, /\bsi (me )?saco\b/) && has(q, /\bcuando (es|son|hay|tengo|entrego|toca|cae)\b/, /\bproxim[oa] (examen|tarea|entrega|proyecto)\b/, /\blo proximo\b/, /\bque es lo proximo\b/, /\ba que hora\b/, /\bcual es (mi|el) proxim/)) return rCuando(q, ctx, t);
 
   // Agenda: pendientes
   if (has(q, /\bme falta entregar\b/, /\batrasad\w*/, /\bque no he hecho\b/, /\b(tareas|cosas|proyectos) pendientes\b/, /\bque tengo pendiente\b/, /\bque me falta\b/) && !findSubject(q, ctx.subjects) && !has(q, /\bnotas?\b/)) return rPendientes(q, ctx, t);
@@ -614,7 +698,7 @@ function responderBase(raw: string, ctx: Contexto): Respuesta {
 
   if (s && (sobreNotas || !sobreAgenda) && !(rango && sobreAgenda)) {
     if (has(q, /\bnotas pendientes\b/) && !s) return rNotasPendientes(ctx, t);
-    return rMateria(q, s, ctx, t);
+    return rMateria(q, s, ctx, t, raw);
   }
   if (has(q, /\bnotas pendientes\b/, /\bque notas me faltan\b/, /\bcuantas notas\b/)) return rNotasPendientes(ctx, t);
   if (sobreNotas && !sobreAgenda) return rGeneral(q, ctx, t);
@@ -626,7 +710,7 @@ function responderBase(raw: string, ctx: Contexto): Respuesta {
   }
 
   // Solo el nombre de una materia: "¿y Química?"
-  if (s) return rMateria(q, s, ctx, t);
+  if (s) return rMateria(q, s, ctx, t, raw);
 
   return {
     understood: false,

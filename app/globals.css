@@ -743,3 +743,54 @@ details.card[open] > summary { margin-bottom: 14px; }
 .answer-item > summary { display: block; }
 .answer-preview { margin: 6px 0 0; color: var(--muted); white-space: pre-wrap; }
 .is-selected-row td { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+
+/* Vista Detalle (como la tabla de Seduca) */
+.detalle-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.seg-pills { display: flex; gap: 6px; }
+.seg-pills .pill { text-decoration: none; }
+.detalle-list { display: grid; gap: 8px; margin: 10px 0; }
+.detalle-row {
+  display: grid; grid-template-columns: 170px minmax(0, 1fr) 80px; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 12px; text-decoration: none;
+  background: color-mix(in srgb, var(--surface) 82%, transparent); border: 1px solid var(--border); border-left: 4px solid var(--accent); transition: transform .15s, border-color .15s;
+}
+.detalle-row:hover { transform: translateY(-1px); border-color: var(--accent); }
+.detalle-subject { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.detalle-subject i { display: none; }
+.detalle-parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px 14px; }
+.detalle-part { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; }
+.detalle-part-name { grid-column: 1 / -1; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
+.detalle-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+.detalle-prom { font-size: .85rem; padding: 2px 7px; border-radius: 6px; background: var(--surface-2); }
+.detalle-final { text-align: center; display: grid; }
+.detalle-final span { font-size: .7rem; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+.detalle-final b { font-size: 1.4rem; }
+.nchip { display: inline-block; min-width: 30px; text-align: center; font-size: .75rem; font-weight: 800; padding: 2px 5px; border-radius: 4px; color: #fff; }
+.nchip.is-top, .detalle-prom.is-top { background: #16a34a; color: #fff; }
+.nchip.is-good, .detalle-prom.is-good { background: #65c466; color: #0b2e10; }
+.nchip.is-mid, .detalle-prom.is-mid { background: #facc15; color: #3b2f00; }
+.nchip.is-low, .detalle-prom.is-low { background: #ef4444; color: #fff; }
+.nchip.is-pending { background: #38bdf8; color: #06283d; }
+.nchip.is-sim { background: transparent; color: var(--text); border: 2px dashed var(--accent); }
+@media (max-width: 720px) { .detalle-row { grid-template-columns: 1fr auto; } .detalle-parts { grid-column: 1 / -1; grid-row: 2; } }
+
+/* Simulador nuevo */
+.sim-list { display: grid; gap: 8px; margin-bottom: 10px; }
+.sim-item { padding: 8px 10px; border-radius: 10px; border: 2px dashed color-mix(in srgb, var(--accent) 55%, var(--border)); background: var(--surface); }
+.sim-item-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sim-item-top select { width: auto !important; padding: 5px 8px !important; font-size: .85rem; }
+.sim-item-top form { margin: 0; }
+.sim-item input[type=range] { width: 100%; accent-color: var(--accent); }
+.sim-tag { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); margin-right: auto; }
+.sim-tag.is-pending { background: color-mix(in srgb, #38bdf8 18%, transparent); color: #0284c7; }
+.sim-item .sim-value { font-size: 1.3rem; min-width: 2.5ch; }
+.sim-add { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.sim-box.small-box b { font-size: 1.25rem; }
+.sim-delta { font-size: .8rem; margin-left: 2px; }
+.sim-need { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); font-size: .9rem; }
+.sim-need select, .sim-need input { width: auto !important; padding: 5px 8px !important; }
+.sim-need input { max-width: 80px; }
+.sim-need-answer { flex-basis: 100%; margin: 6px 0 0; font-size: 1rem; }
+.item-edit { flex-wrap: nowrap; }
+.item-name-input { width: 150px !important; padding: 6px 8px !important; font-size: .85rem; border-style: dashed !important; }
+.item-list li { grid-template-columns: 1fr auto; }
+@media (max-width: 560px) { .item-name-input { width: 110px !important; } }
