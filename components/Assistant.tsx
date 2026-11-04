@@ -75,6 +75,12 @@ const etiquetaVoz = (v: SpeechSynthesisVoice) => {
   return `${puntajeVoz(v) >= 8 ? "✨ " : ""}${nombre} · ${pais[v.lang.replace("_", "-")] ?? v.lang}`;
 };
 
+/** Voces panameñas naturales (Azure). Solo aparecen si el administrador configuró la clave. */
+const VOCES_PA = [
+  { id: "azure:es-PA-MargaritaNeural", label: "🇵🇦 Margarita · Panamá (natural)" },
+  { id: "azure:es-PA-RobertoNeural", label: "🇵🇦 Roberto · Panamá (natural)" },
+];
+
 type SR = {
   lang: string; interimResults: boolean; continuous: boolean;
   start: () => void; stop: () => void; abort: () => void;
@@ -96,6 +102,11 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
   const [vozNombre, setVozNombre] = useState("");
   const [velocidad, setVelocidad] = useState(1);
   const [ajustes, setAjustes] = useState(false);
+  const [azure, setAzure] = useState(false);
+  const ctxAudio = useRef<AudioContext | null>(null);
+  const sonando = useRef<AudioBufferSourceNode | null>(null);
+  const turnoVoz = useRef(0);
+  const cacheVoz = useRef(new Map<string, AudioBuffer>());
   const recRef = useRef<SR | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -108,6 +119,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
       setVozNombre(localStorage.getItem("aula-voz-nombre") ?? "");
       setVelocidad(Number(localStorage.getItem("aula-voz-velocidad") ?? "1") || 1);
     } catch { /* sin almacenamiento */ }
+    fetch("/api/voz").then((r) => (r.ok ? r.json() : null)).then((d) => setAzure(!!d?.enabled)).catch(() => {});
     if (!("speechSynthesis" in window)) return;
     const cargar = () => setVoces(vocesEspanol().sort((a, b) => puntajeVoz(b) - puntajeVoz(a)));
     cargar();
@@ -139,8 +151,29 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
 
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }); }, [msgs, busy]);
 
-  const hablar = useCallback((text: string, forzar = false) => {
-    if ((!voz && !forzar) || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  /** Para cualquier voz que esté sonando (la del navegador o la de Azure). */
+  const callar = useCallback(() => {
+    turnoVoz.current++;
+    try { window.speechSynthesis?.cancel(); } catch { /* sin voz */ }
+    try { sonando.current?.stop(); } catch { /* ya paró */ }
+    sonando.current = null;
+  }, []);
+
+  /** En iPhone el audio solo puede sonar si se activa con un toque: se prepara aquí. */
+  const desbloquearAudio = () => {
+    try {
+      const W = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+      const C = W.AudioContext ?? W.webkitAudioContext;
+      if (!C) return;
+      if (!ctxAudio.current) ctxAudio.current = new C();
+      if (ctxAudio.current.state === "suspended") ctxAudio.current.resume().catch(() => {});
+    } catch { /* sin audio */ }
+  };
+
+  const vozElegida = vozNombre || (azure ? VOCES_PA[0].id : "");
+
+  const hablarNavegador = useCallback((text: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const synth = window.speechSynthesis;
     synth.cancel();
     const lista = voces.length ? voces : vocesEspanol().sort((a, b) => puntajeVoz(b) - puntajeVoz(a));
@@ -155,7 +188,40 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
       u.pitch = 1;
       synth.speak(u);
     }
-  }, [voz, voces, vozNombre, velocidad]);
+  }, [voces, vozNombre, velocidad]);
+
+  const hablar = useCallback(async (text: string, forzar = false) => {
+    if ((!voz && !forzar) || typeof window === "undefined") return;
+    callar();
+    if (!(azure && vozElegida.startsWith("azure:"))) { hablarNavegador(text); return; }
+    const turno = turnoVoz.current;
+    const voice = vozElegida.slice(6);
+    const limpio = paraVoz(text);
+    const k = `${voice}|${velocidad}|${limpio}`;
+    try {
+      if (!ctxAudio.current) desbloquearAudio();
+      const ac = ctxAudio.current;
+      if (!ac) throw new Error("sin audio");
+      if (ac.state === "suspended") await Promise.race([ac.resume(), new Promise((r) => setTimeout(r, 400))]);
+      if (ac.state !== "running") throw new Error("audio bloqueado");
+      let buf = cacheVoz.current.get(k);
+      if (!buf) {
+        const r = await fetch("/api/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: limpio, voice, rate: velocidad }) });
+        if (!r.ok) throw new Error("voz " + r.status);
+        buf = await ac.decodeAudioData(await r.arrayBuffer());
+        cacheVoz.current.set(k, buf);
+        if (cacheVoz.current.size > 25) cacheVoz.current.delete(cacheVoz.current.keys().next().value!);
+      }
+      if (turno !== turnoVoz.current) return; // ya pidió otra cosa o la silenció
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      src.connect(ac.destination);
+      src.start();
+      sonando.current = src;
+    } catch {
+      if (turno === turnoVoz.current) hablarNavegador(text); // sin internet, sin cuota o bloqueado: voz del navegador
+    }
+  }, [voz, azure, vozElegida, velocidad, callar, hablarNavegador]);
 
   const guardarVoz = (nombre: string, vel: number) => {
     setVozNombre(nombre); setVelocidad(vel);
@@ -206,7 +272,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!Ctor) return;
     if (listening) { recRef.current?.stop(); return; }
-    window.speechSynthesis?.cancel();
+    callar();
     const rec = new Ctor();
     rec.lang = "es-PA";
     rec.interimResults = true;
@@ -244,7 +310,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
     setVoz((v) => {
       const nv = !v;
       try { localStorage.setItem("aula-voz", nv ? "1" : "0"); } catch { /* sin almacenamiento */ }
-      if (!nv) window.speechSynthesis?.cancel();
+      if (!nv) callar();
       return nv;
     });
   };
@@ -255,7 +321,7 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
   return (
     <>
       {!open && (
-        <button className="asis-fab" onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }} aria-label="Abrir asistente">
+        <button className="asis-fab" onClick={() => { desbloquearAudio(); setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }} aria-label="Abrir asistente">
           <span aria-hidden>🤖</span>
         </button>
       )}
@@ -267,22 +333,23 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
             <button className="asis-icon" onClick={() => tourGo(1)} title="¿Cómo funciona la app?" aria-label="¿Cómo funciona la app?">❔</button>
             <button className={`asis-icon ${ajustes ? "is-on" : ""}`} onClick={() => setAjustes((x) => !x)} title="Cambiar la voz" aria-label="Cambiar la voz">🎙️</button>
             <button className={`asis-icon ${voz ? "is-on" : ""}`} onClick={toggleVoz} title={voz ? "Silenciar voz" : "Activar voz"} aria-label={voz ? "Silenciar voz" : "Activar voz"}>{voz ? "🔊" : "🔇"}</button>
-            <button className="asis-icon" onClick={() => { setOpen(false); window.speechSynthesis?.cancel(); recRef.current?.abort(); if (msgs.some((x) => x.tour != null)) tourDone(); }} aria-label="Cerrar">✕</button>
+            <button className="asis-icon" onClick={() => { setOpen(false); callar(); recRef.current?.abort(); if (msgs.some((x) => x.tour != null)) tourDone(); }} aria-label="Cerrar">✕</button>
           </header>
 
           {ajustes && (
             <div className="asis-voces">
               <b>🎙️ Voz del asistente</b>
-              {voces.length ? (
+              {voces.length || azure ? (
                 <>
-                  <select value={vozNombre || voces[0]?.name} onChange={(e) => { guardarVoz(e.target.value, velocidad); }} aria-label="Voz">
-                    {voces.map((v) => <option key={v.name + v.lang} value={v.name}>{etiquetaVoz(v)}</option>)}
+                  <select value={vozElegida || voces[0]?.name} onChange={(e) => { desbloquearAudio(); guardarVoz(e.target.value, velocidad); }} aria-label="Voz">
+                    {azure && <optgroup label="Acento panameño">{VOCES_PA.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}</optgroup>}
+                    {voces.length > 0 && <optgroup label="Voces de este dispositivo">{voces.map((v) => <option key={v.name + v.lang} value={v.name}>{etiquetaVoz(v)}</option>)}</optgroup>}
                   </select>
                   <label className="asis-vel">
                     <span>Velocidad</span>
-                    <input type="range" min={0.8} max={1.3} step={0.05} value={velocidad} onChange={(e) => guardarVoz(vozNombre || voces[0]?.name, Number(e.target.value))} />
+                    <input type="range" min={0.8} max={1.3} step={0.05} value={velocidad} onChange={(e) => guardarVoz(vozElegida || voces[0]?.name, Number(e.target.value))} />
                   </label>
-                  <button className="btn btn-primary btn-sm" onClick={() => hablar(`¡Xopá${firstName ? `, ${firstName}` : ""}! Así sueno yo. Mañana tienes examen de Matemáticas: te sugiero repasar hoy.`, true)}>▶ Probar voz</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => { desbloquearAudio(); hablar(`¡Xopá${firstName ? `, ${firstName}` : ""}! Así sueno yo. Mañana tienes examen de Matemáticas: te sugiero repasar hoy.`, true); }}>▶ Probar voz</button>
                 </>
               ) : <p className="small">Tu navegador no tiene voces en español.</p>}
               <details>
@@ -332,9 +399,9 @@ export function Assistant({ firstName, userId, isAdmin, lessons = true }: { firs
             )}
           </div>
 
-          <form className="asis-input" onSubmit={(e) => { e.preventDefault(); preguntar(input); }}>
+          <form className="asis-input" onSubmit={(e) => { e.preventDefault(); desbloquearAudio(); preguntar(input); }}>
             {micOk && (
-              <button type="button" className={`asis-mic ${listening ? "is-listening" : ""}`} onClick={escuchar} aria-label={listening ? "Dejar de escuchar" : "Hablar"} title="Hablar">
+              <button type="button" className={`asis-mic ${listening ? "is-listening" : ""}`} onClick={() => { desbloquearAudio(); escuchar(); }} aria-label={listening ? "Dejar de escuchar" : "Hablar"} title="Hablar">
                 {listening ? "■" : "🎤"}
               </button>
             )}

@@ -43,6 +43,17 @@ En **Project Settings**:
 2. Antes de pulsar **Deploy**, abre **Environment Variables** y agrega las tres variables del paso 2.
 3. Pulsa **Deploy**.
 
+### (Opcional) Voz panameña para el asistente
+
+El asistente puede hablar con las voces naturales de Panamá **Margarita** y **Roberto** (Azure, gratis hasta 500 000 caracteres al mes).
+
+1. En [portal.azure.com](https://portal.azure.com): **Create a resource** → busca **Speech** → **Create**.
+2. Región: **East US**; Pricing tier: **Free F0**. **Review + create** → **Create**.
+3. Abre el recurso → **Keys and Endpoint** → copia **KEY 1** y **Location/Region**.
+4. En Vercel → Settings → Environment Variables agrega `AZURE_SPEECH_KEY` (la KEY 1) y `AZURE_SPEECH_REGION` (ej. `eastus`), y haz **Redeploy**.
+
+La clave se queda en el servidor. Si se acaba la cuota o falla, el asistente usa la voz del navegador.
+
 ### 4. Crea tu cuenta de administrador
 
 Abre `https://TU-PAGINA.vercel.app/setup` y crea tu cuenta.
