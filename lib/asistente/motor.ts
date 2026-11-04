@@ -3,7 +3,7 @@
  * Recibe la pregunta y los datos del alumno (notas + agenda) y devuelve la respuesta.
  * Es una función pura: no toca la base de datos, así que se puede probar fácilmente.
  */
-import { fmt, neededOnPending, periodGrade, yearSummary, type Scale } from "../grades";
+import { finalDecimals, fmt, neededOnPending, periodGrade, yearSummary, type Scale } from "../grades";
 import type { GradeCategory, GradeItem, GradeMethod, MyEvent } from "../types";
 import { dateLong, diffDays, parseRange, plus, relLabel, weekdayName, WEEKDAYS, type Range } from "./fechas";
 import { has, normalize, speaksPana, stripAccents, SUBJECT_ALIASES } from "./texto";
@@ -104,6 +104,8 @@ function estado(s: SubjectData, ctx: Contexto): Estado {
 }
 
 const f = (x: number | null | undefined, ctx: Contexto) => fmt(x, ctx.scale.decimals);
+/** Promedios (finales y generales) con 2 decimales, como el boletín. */
+const f2 = (x: number | null | undefined, ctx: Contexto) => fmt(x, finalDecimals(ctx.scale));
 
 /** "para pasar necesitas al menos 2.8 en el bimestral" (sin punto final). */
 function needText(e: Estado, ctx: Contexto, t: Tono, goal: number = ctx.passMark, opts: { prefijo?: boolean; materia?: boolean } = {}): string {
@@ -365,7 +367,7 @@ function rMateria(q: string, s: SubjectData, ctx: Contexto, t: Tono): Respuesta 
     const msg = y.status === "aprobado" ? pick(t, "Año pasado. ✅", "Año aprobado. ✅") : y.status === "reprobado" ? "Quedó por debajo de la nota para pasar. ❌"
       : y.status === "imposible" ? pick(t, "Ayala, ya no alcanza pa' pasar el año ni con 5. Habla con tu profe.", "Ya no alcanza para pasar el año ni con la nota máxima; habla con tu profe.")
       : `Pa' pasar el año necesitas promediar **${f(y.needed, ctx)}** en ${y.remaining === 1 ? `el ${ctx.periodLabel.toLowerCase()} que falta` : `los ${y.remaining} ${ctx.periodLabel.toLowerCase()}s que faltan`}.`.replace("Pa' ", pick(t, "Pa' ", "Para "));
-    return { understood: true, links: [link], text: `En **${s.name}** llevas **${f(y.average, ctx)}** de promedio del año. ${msg}` };
+    return { understood: true, links: [link], text: `En **${s.name}** llevas **${f2(y.average, ctx)}** de promedio del año. ${msg}` };
   }
 
   // Pendientes / partes
@@ -396,7 +398,8 @@ function rGeneral(q: string, ctx: Contexto, t: Tono): Respuesta {
   const ests = ctx.subjects.map((s) => estado(s, ctx)).filter((e) => e.grade != null);
   if (!ests.length) return { understood: true, links: [{ href: "/notas/importar", label: "Importar desde Seduca" }], text: pick(t, "Todavía no tienes notas, fren. Impórtalas de Seduca y te digo cómo vas. 📋", "Aún no tienes notas. Impórtalas desde Seduca y te digo cómo vas. 📋") };
   const sorted = [...ests].sort((a, b) => a.grade! - b.grade!);
-  const avg = Math.floor((ests.reduce((a, e) => a + e.grade!, 0) / ests.length) * 10 ** ctx.scale.decimals + 1e-9) / 10 ** ctx.scale.decimals;
+  const fd = finalDecimals(ctx.scale);
+  const avg = Math.floor((ests.reduce((a, e) => a + e.grade!, 0) / ests.length) * 10 ** fd + 1e-9) / 10 ** fd;
   const enRiesgo = ests.filter((e) => e.needPass.status === "imposible" || (e.needPass.status === "necesita" && e.needPass.value >= 3.5) || e.grade! < ctx.passMark);
   const link = { href: "/notas", label: "Ver mis notas" };
 
@@ -437,14 +440,14 @@ function rGeneral(q: string, ctx: Contexto, t: Tono): Respuesta {
   if (metaG && has(q, /\bpromedio\b|\bgeneral\b|\bcuadro de honor\b/)) {
     const goal = Number(metaG[1]);
     const bajas = sorted.filter((e) => e.grade! < goal).slice(0, 3);
-    return { understood: true, links: [link], text: `Tu promedio es **${f(avg, ctx)}**. ${avg >= goal ? pick(t, `Ya estás arriba de ${goal}, mantente así. 🔥`, `Ya estás por encima de ${goal}. 🎉`) : `Pa' llegar a **${goal}** te conviene subir ${joinY(bajas.map((e) => `**${e.s.name}** (${f(e.grade, ctx)})`))}: son las que más te bajan.`.replace("Pa' ", pick(t, "Pa' ", "Para "))}` };
+    return { understood: true, links: [link], text: `Tu promedio es **${f2(avg, ctx)}**. ${avg >= goal ? pick(t, `Ya estás arriba de ${goal}, mantente así. 🔥`, `Ya estás por encima de ${goal}. 🎉`) : `Pa' llegar a **${goal}** te conviene subir ${joinY(bajas.map((e) => `**${e.s.name}** (${f(e.grade, ctx)})`))}: son las que más te bajan.`.replace("Pa' ", pick(t, "Pa' ", "Para "))}` };
   }
 
   // Resumen general
   const top = sorted[sorted.length - 1], low = sorted[0];
   return {
     understood: true, links: [link],
-    text: `${hola(t, "")}Tu promedio general es **${f(avg, ctx)}**${avg >= 4.5 ? " 🔥" : avg >= 4 ? " 🎉" : ""}. Tu mejor materia es **${top.s.name} (${f(top.grade, ctx)})** y la que más te cuesta es **${low.s.name} (${f(low.grade, ctx)})**.` +
+    text: `${hola(t, "")}Tu promedio general es **${f2(avg, ctx)}**${avg >= 4.5 ? " 🔥" : avg >= 4 ? " 🎉" : ""}. Tu mejor materia es **${top.s.name} (${f(top.grade, ctx)})** y la que más te cuesta es **${low.s.name} (${f(low.grade, ctx)})**.` +
       (enRiesgo.length ? pick(t, ` Ojo con ${joinY(enRiesgo.map((e) => `**${e.s.name}**`))}.`, ` Presta atención a ${joinY(enRiesgo.map((e) => `**${e.s.name}**`))}.`) : pick(t, " Vas pasando todo. ✅", " Vas aprobando todas. ✅")),
   };
 }

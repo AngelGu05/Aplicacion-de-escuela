@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fmt, neededOnPending, periodGrade } from "@/lib/grades";
+import { finalDecimals, fmt, neededOnPending, periodGrade } from "@/lib/grades";
 import { getPrefs, normCategory, normItem, normPrefs, normSubject, scaleOf, subjectSummary, SUBJECT_COLORS } from "@/lib/notas";
 import type { GradeCategory, GradeItem, GradeSubject } from "@/lib/types";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -53,7 +53,7 @@ export default async function SubjectGradesPage({ params, searchParams }: { para
         </div>
         <div className="year-badge">
           <span>Promedio del año</span>
-          <b>{fmt(year.average, scale.decimals)}</b>
+          <b>{fmt(year.average, finalDecimals(scale))}</b>
         </div>
       </section>
 

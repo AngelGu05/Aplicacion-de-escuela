@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fmt, neededOnPending, truncTo } from "@/lib/grades";
+import { finalDecimals, fmt, neededOnPending, truncTo } from "@/lib/grades";
 import { ensureStarterSubjects, getPrefs, normCategory, normItem, normPrefs, normSubject, scaleOf, subjectSummary, SUBJECT_COLORS } from "@/lib/notas";
 import type { GradeCategory, GradeItem, GradeSubject } from "@/lib/types";
 import { AddSubjectForm, PrefsForm } from "./Forms";
@@ -49,9 +49,10 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
 
   const rows = subjects.map((s) => ({ s, ...subjectSummary(s, cats.filter((c) => c.subject_id === s.id), items.filter((i) => i.subject_id === s.id), prefs) }));
   const atRisk = rows.filter((r) => ["en-riesgo", "imposible", "reprobado"].includes(r.year.status)).length;
+  const fd = finalDecimals(scale); // 2 decimales para promedios, como el boletín de Seduca
   const avg = (xs: (number | null)[]) => {
     const k = xs.filter((x): x is number => x != null);
-    return k.length ? truncTo(k.reduce((a, b) => a + b, 0) / k.length, scale.decimals) : null;
+    return k.length ? truncTo(k.reduce((a, b) => a + b, 0) / k.length, fd) : null;
   };
   const periodNums = Array.from({ length: prefs.periods }, (_, i) => i + 1);
   const overall = vista ? avg(rows.map((r) => r.grades[vista - 1])) : avg(rows.map((r) => r.year.average));
@@ -75,7 +76,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
           <Link href="/notas" className={`tab ${vista === 0 ? "is-active" : ""}`}>📋 General</Link>
           {periodNums.map((p) => (
             <Link key={p} href={`/notas?b=${p}`} className={`tab ${vista === p ? "is-active" : ""}`}>
-              {label} {p} <span className="tab-grade">{fmt(perPeriod[p - 1], scale.decimals)}</span>
+              {label} {p} <span className="tab-grade">{fmt(perPeriod[p - 1], fd)}</span>
             </Link>
           ))}
         </nav>
@@ -83,7 +84,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
 
       {rows.length > 0 && (
         <div className="stat-row">
-          <div className="stat"><span>{vista ? `Promedio del ${label.toLowerCase()} ${vista}` : "Promedio general del año"}</span><b>{fmt(overall, scale.decimals)}</b></div>
+          <div className="stat"><span>{vista ? `Promedio del ${label.toLowerCase()} ${vista}` : "Promedio general del año"}</span><b>{fmt(overall, fd)}</b></div>
           <div className="stat"><span>Materias</span><b>{rows.length}</b></div>
           <div className={`stat ${atRisk ? "stat-warn" : "stat-ok"}`}><span>En riesgo</span><b>{atRisk}</b></div>
           <div className="stat"><span>Escala</span><b className="stat-sm">{prefs.scale_min}–{prefs.scale_max} · pasa {prefs.pass_mark}</b></div>
@@ -116,16 +117,16 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
                       {grades.map((g, i) => (
                         <td key={i} className="num"><Link href={`/notas/${s.id}?p=${i + 1}`} className={`g-cell ${g == null ? "is-empty" : g >= target ? "is-ok" : "is-bad"}`}>{fmt(g, scale.decimals)}</Link></td>
                       ))}
-                      <td className="num"><b className={`g-cell ${year.average == null ? "is-empty" : year.average >= target ? "is-ok" : "is-bad"}`}>{fmt(year.average, scale.decimals)}</b></td>
+                      <td className="num"><b className={`g-cell ${year.average == null ? "is-empty" : year.average >= target ? "is-ok" : "is-bad"}`}>{fmt(year.average, fd)}</b></td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr><th>Promedio</th>{perPeriod.map((g, i) => <th key={i} className="num">{fmt(g, scale.decimals)}</th>)}<th className="num">{fmt(overall, scale.decimals)}</th></tr>
+                  <tr><th>Promedio</th>{perPeriod.map((g, i) => <th key={i} className="num">{fmt(g, fd)}</th>)}<th className="num">{fmt(overall, fd)}</th></tr>
                 </tfoot>
               </table>
             </div>
-            <p className="small muted">La nota final es el promedio de los {label.toLowerCase()}s que ya tienen nota (cortado a {scale.decimals} decimal{scale.decimals === 1 ? "" : "es"}, como en Seduca). Toca una nota para ver el detalle.</p>
+            <p className="small muted">Como en el boletín de Seduca: cada {label.toLowerCase()} va con {scale.decimals} decimal{scale.decimals === 1 ? "" : "es"} y la nota final es el promedio de los {label.toLowerCase()}s con {fd} decimales, cortado (no redondeado). El promedio general es el promedio de las notas finales. Toca una nota para ver el detalle.</p>
           </section>
         )}
         {vista > 0 && !rows.some((r) => r.grades[vista - 1] != null) && (
@@ -165,7 +166,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
             const st = STATUS[year.status];
             let msg: string;
             if (year.status === "sin-datos") msg = "Agrega tus notas para ver cómo vas.";
-            else if (year.status === "aprobado") msg = `Terminaste con ${fmt(year.average, scale.decimals)}.`;
+            else if (year.status === "aprobado") msg = `Terminaste con ${fmt(year.average, fd)}.`;
             else if (year.status === "reprobado") msg = `Quedaste por debajo de ${target}.`;
             else if (year.status === "imposible") msg = `Aunque saques ${prefs.scale_max} no llegas a ${target} este año.`;
             else msg = `Necesitas promediar ${fmt(year.needed, scale.decimals)} en ${year.remaining === 1 ? `el ${label.toLowerCase()} que falta` : `los ${year.remaining} ${label.toLowerCase()}s que faltan`}.`;
@@ -176,7 +177,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
                   <span className={`status-pill ${st.cls}`}>{st.label}</span>
                 </div>
                 <div className="grade-big">
-                  <b>{fmt(year.average, scale.decimals)}</b>
+                  <b>{fmt(year.average, fd)}</b>
                   <span>meta {target}</span>
                 </div>
                 <div className="period-chips">

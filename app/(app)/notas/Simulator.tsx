@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { fmt, periodGrade, yearSummary, type Scale } from "@/lib/grades";
+import { finalDecimals, fmt, periodGrade, yearSummary, type Scale } from "@/lib/grades";
 import type { GradeCategory, GradeItem, GradeMethod } from "@/lib/types";
 
 /** "¿Y si saco…?": mueve la barra y mira cómo quedaría el trimestre y el año. */
@@ -38,7 +38,7 @@ export function Simulator({
         </div>
         <div className="sim-box">
           <span>Promedio del año {year.remaining > 0 ? "(hasta ahora)" : ""}</span>
-          <b>{fmt(year.average, scale.decimals)}</b>
+          <b>{fmt(year.average, finalDecimals(scale))}</b>
           <small>
             {year.remaining > 0 && year.needed != null
               ? `Luego necesitarías ${fmt(year.needed, scale.decimals)} en ${year.remaining === 1 ? "el que falta" : `los ${year.remaining} que faltan`}`
