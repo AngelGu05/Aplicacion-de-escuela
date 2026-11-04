@@ -225,3 +225,34 @@ export async function setSubjectAccess(formData: FormData) {
   }
   revalidatePath("/admin/alumnos");
 }
+
+// ---------------------------------------------------------------- Respuestas que enseña el admin
+
+export async function saveAnswer(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const id = str(formData, "id");
+  const question = str(formData, "question").slice(0, 200);
+  const keywords = str(formData, "keywords").slice(0, 400);
+  const answer = str(formData, "answer").slice(0, 1500);
+  const room = str(formData, "classroom_id");
+  const fromUnknown = str(formData, "from_unknown");
+  if (!question) return { error: "Escribe la pregunta de ejemplo." };
+  if (!answer) return { error: "Escribe la respuesta." };
+  const row = { question, keywords, answer, classroom_id: UUID.test(room) ? room : null, updated_at: new Date().toISOString() };
+  const db = createAdminClient();
+  const { error } = UUID.test(id)
+    ? await db.from("assistant_answers").update(row).eq("id", id)
+    : await db.from("assistant_answers").insert(row);
+  if (error) return { error: error.message.includes("does not exist") || error.code === "42P01" ? "Falta ejecutar supabase/007_respuestas_asistente.sql en Supabase." : error.message };
+  if (UUID.test(fromUnknown)) await db.from("assistant_unknown").delete().eq("id", fromUnknown);
+  revalidatePath("/admin/asistente");
+  return { ok: "¡Listo! El asistente ya sabe responder eso." };
+}
+
+export async function deleteAnswer(formData: FormData) {
+  await requireAdmin();
+  const id = str(formData, "id");
+  if (!UUID.test(id)) return;
+  await createAdminClient().from("assistant_answers").delete().eq("id", id);
+  revalidatePath("/admin/asistente");
+}

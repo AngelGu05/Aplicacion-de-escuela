@@ -4,6 +4,7 @@ import { getPrefs, normCategory, normItem, normPrefs, normSubject, scaleOf, sort
 import { addDays, todayISO } from "../time";
 import type { GradeCategory, GradeItem, GradeSubject, Profile } from "../types";
 import type { Contexto } from "./motor";
+import { parseKeywords, type Faq } from "./faq";
 
 /** Junta las notas y la agenda de UN alumno para que el asistente pueda responder. */
 export async function cargarContexto(profile: Profile): Promise<Contexto> {
@@ -20,6 +21,14 @@ export async function cargarContexto(profile: Profile): Promise<Contexto> {
       ])
     : [{ data: [] as GradeCategory[] }, { data: [] as GradeItem[] }];
   const events = await eventsFor(profile, addDays(today, -30), addDays(today, 150));
+  let faq: Faq[] = [];
+  try {
+    const { data } = await db.from("assistant_answers").select("id, question, keywords, answer, classroom_id")
+      .returns<{ id: string; question: string; keywords: string; answer: string; classroom_id: string | null }[]>();
+    faq = (data ?? [])
+      .filter((r) => !r.classroom_id || r.classroom_id === profile.classroom_id || profile.role === "admin")
+      .map((r) => ({ id: r.id, question: r.question, keywords: parseKeywords(r.keywords), answer: r.answer }));
+  } catch { faq = []; }
 
   return {
     today,
@@ -29,6 +38,7 @@ export async function cargarContexto(profile: Profile): Promise<Contexto> {
     periods: prefs.periods,
     periodLabel: prefs.period_label,
     events,
+    faq,
     subjects: subjects.map((s) => ({
       id: s.id, name: s.name, target: s.target, method: s.method,
       cats: (cats ?? []).filter((c) => c.subject_id === s.id).map(normCategory),

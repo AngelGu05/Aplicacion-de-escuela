@@ -8,10 +8,12 @@
 const PANA = [
   "xopa", "sopa", "fren", "mopri", "pelao", "pelaita", "vaina", "vainas", "buco", "ofi", "pritty", "ayala",
   "diablo", "chuleta", "bulto", "queme", "quemo", "quemar", "quemarme", "salvao", "pegao", "raspando", "finde",
-  "chantin", "loco", "manito", "bro",
+  "chantin", "loco", "manito", "bro", "io",
 ];
 
 const SLANG: [RegExp, string][] = [
+  [/^(io|ey|oye|oe)\s+/g, ""],
+  [/\s+(io|pues)$/g, ""],
   [/\bpa['’]?l\b/g, "para el"],
   [/\bpa['’]/g, "para "],
   [/\bpa\b/g, "para"],

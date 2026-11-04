@@ -7,6 +7,7 @@ import { finalDecimals, fmt, neededOnPending, periodGrade, yearSummary, type Sca
 import type { GradeCategory, GradeItem, GradeMethod, MyEvent } from "../types";
 import { dateLong, diffDays, parseRange, plus, relLabel, weekdayName, WEEKDAYS, type Range } from "./fechas";
 import { has, normalize, speaksPana, stripAccents, SUBJECT_ALIASES } from "./texto";
+import { esGroseria, matchFaq, type Faq } from "./faq";
 
 // ---------------------------------------------------------------- Datos de entrada
 
@@ -28,6 +29,7 @@ export type Contexto = {
   periodLabel: string;
   subjects: SubjectData[];
   events: MyEvent[]; // desde hace ~30 días hasta ~120 días
+  faq?: Faq[]; // respuestas enseñadas por el administrador
 };
 
 export type Accion =
@@ -552,15 +554,24 @@ const AYUDA = (t: Tono) => pick(t,
   "Te puedo decir qué tienes cualquier día, cuánto necesitas pa' pasar o pa' tu meta, cómo vas en cada materia y qué te conviene estudiar. Prueba: *“¿Qué tengo mañana?”*, *“¿Cuánto necesito pa' pasar mate?”* o *“¿Qué estudio hoy?”* 😉",
   "Puedo decirte qué tienes cualquier día, cuánto necesitas para pasar o para tu meta, cómo vas en cada materia y qué te conviene estudiar. Prueba con: *“¿Qué tengo mañana?”*, *“¿Cuánto necesito para pasar Física?”* o *“¿Qué estudio hoy?”*");
 
-export function responder(raw: string, ctx: Contexto): Respuesta {
+function responderBase(raw: string, ctx: Contexto): Respuesta {
   const q = normalize(raw);
   const t: Tono = { pana: speaksPana(raw) };
   if (!q) return { understood: true, text: AYUDA(t) };
 
+  // Groserías: respuesta tranquila y no se guarda en la lista
+  if (esGroseria(q)) {
+    return { understood: true, text: pick(t, "Ey, tranqui, fren 😅. Yo estoy pa' ayudarte con tu agenda y tus notas. Prueba: *“¿Qué tengo mañana?”*", "Tranquilo 😅. Estoy para ayudarte con tu agenda y tus notas. Prueba: *“¿Qué tengo mañana?”*") };
+  }
+
+  // Respuestas que enseñó el administrador (si el parecido es claro, van primero)
+  const faq = matchFaq(q, ctx.faq ?? []);
+  if (faq?.strong) return { understood: true, text: faq.faq.answer };
+
   // Saludos, gracias, ayuda
   if (has(q, /^(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|ey)( \w+)?$/)) return { understood: true, text: pick(t, `¡Xopá${ctx.firstName ? `, ${ctx.firstName}` : ""}! 👋 ¿Qué quieres saber? ${AYUDA(t)}`, `¡Hola${ctx.firstName ? `, ${ctx.firstName}` : ""}! 👋 ${AYUDA(t)}`) };
   if (has(q, /^(gracias|muchas gracias|grax|thanks|ok|vale|listo|chevere|pritty)( \w+)?$/)) return { understood: true, text: pick(t, "¡A la orden, fren! 🙌", "¡Con gusto! 🙌") };
-  if (has(q, /\bcomo funciona (la app|la aplicacion|la pagina|esto|esta app|esta pagina|aula)\b/, /\bexplica\w* (la app|la aplicacion|la pagina|como funciona)\b/, /\btutorial\b/, /\bguia\b/, /\brecorrido\b/, /\bque (es|hace) (esta|la) (app|aplicacion|pagina)\b/, /\bcomo se usa\b/, /\bcomo uso (la app|esto|la pagina)\b/)) {
+  if (has(q, /\bcomo funciona (la app|la aplicacion|la pagina|esto|esta app|esta pagina|aula)\b/, /\bexplica\w* (la app|la aplicacion|la pagina|como funciona)\b/, /\btutorial\b/, /\bguia\b/, /\brecorrido\b/, /\bque (es|hace) (esta|la) (app|aplicacion|pagina)\b/, /\bcomo se usa\b/, /\bcomo uso (la app|esto|la pagina)\b/, /\bexplica\w* que es (esta|esto|la)\b/, /^que es (esto|esta cosa|esta app|esta pagina|aula)\b/, /\bpara que sirve (esto|esta app|esta pagina|la app)\b/)) {
     return { understood: true, action: { type: "tour" }, text: pick(t, "¡De una! Te explico cómo funciona la app. 👇", "¡Claro! Te explico cómo funciona la app. 👇") };
   }
   if (has(q, /\bque (puedes|sabes) hacer\b/, /\bayuda\b/, /\bque te (puedo|pregunto)\b/, /\bcomo funcionas\b/)) return { understood: true, text: AYUDA(t) };
@@ -623,4 +634,12 @@ export function responder(raw: string, ctx: Contexto): Respuesta {
       "Uy, esa no la pillé, fren. 😅 Prueba con: *“¿Qué tengo mañana?”*, *“¿Cuánto necesito pa' pasar mate?”*, *“¿Qué día cae el 15?”* o *“¿Qué estudio hoy?”*. Ya le avisé a quien me enseña pa' que aprenda esa pregunta.",
       "No entendí esa pregunta. 😅 Prueba con: *“¿Qué tengo mañana?”*, *“¿Cuánto necesito para pasar Física?”*, *“¿Qué día cae el 15?”* o *“¿Qué estudio hoy?”*. Guardé la pregunta para enseñármela después."),
   };
+}
+
+/** Responde; si no entendió, revisa antes las respuestas que enseñó el administrador. */
+export function responder(raw: string, ctx: Contexto): Respuesta {
+  const r = responderBase(raw, ctx);
+  if (r.understood) return r;
+  const m = matchFaq(normalize(raw), ctx.faq ?? []);
+  return m ? { understood: true, text: m.faq.answer } : r;
 }

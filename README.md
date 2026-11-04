@@ -21,7 +21,7 @@ Tecnología: Next.js (en Vercel) + Supabase (cuentas y base de datos).
 
 1. En [supabase.com](https://supabase.com), abre tu proyecto.
 2. Ve a **SQL Editor → New query**, pega todo el contenido de [`supabase/schema.sql`](supabase/schema.sql) y pulsa **Run**.
-3. Abre otra **New query**, pega [`supabase/002_agenda_y_notas.sql`](supabase/002_agenda_y_notas.sql) y pulsa **Run** (agenda y notas). Luego lo mismo con [`supabase/003_asistente.sql`](supabase/003_asistente.sql) (asistente) [`supabase/004_acceso_por_materia.sql`](supabase/004_acceso_por_materia.sql) (acceso Premium por materia) [`supabase/005_solo_herramientas.sql`](supabase/005_solo_herramientas.sql) (cuentas sin lecciones) y [`supabase/006_agenda_seduca.sql`](supabase/006_agenda_seduca.sql) (agenda desde Seduca).
+3. Abre otra **New query**, pega [`supabase/002_agenda_y_notas.sql`](supabase/002_agenda_y_notas.sql) y pulsa **Run** (agenda y notas). Luego lo mismo con [`supabase/003_asistente.sql`](supabase/003_asistente.sql) (asistente) [`supabase/004_acceso_por_materia.sql`](supabase/004_acceso_por_materia.sql) (acceso Premium por materia) [`supabase/005_solo_herramientas.sql`](supabase/005_solo_herramientas.sql) (cuentas sin lecciones) [`supabase/006_agenda_seduca.sql`](supabase/006_agenda_seduca.sql) (agenda desde Seduca) y [`supabase/007_respuestas_asistente.sql`](supabase/007_respuestas_asistente.sql) (respuestas que enseñas al asistente).
 4. Ve a **Authentication → Sign In / Providers** y **desactiva "Allow new users to sign up"**.
    Así nadie puede crearse una cuenta por su cuenta; solo tú desde el panel.
 
@@ -61,6 +61,8 @@ Esa página **desaparece** en cuanto existe un administrador, así que hazlo jus
 **Salones y agenda:** Panel → Alumnos → crea los salones (10°A, 10°B…) y asigna cada alumno a su salón. Lo que publiques en la Agenda para un salón le aparece a todos sus alumnos. Si marcas a un alumno como **Editor**, él también puede publicar eventos para su propio salón.
 
 **Traer agenda y notas de Seduca:** en *Conectar con Seduca* (`/conectar-seduca`) cada alumno instala una vez el botón **📥 Enviar a Aula** en sus favoritos. Estando en el Calendario o en las Calificaciones de Seduca, lo toca y Aula abre la vista previa para importar. Reimportar actualiza sin duplicar.
+
+**Enseñarle al asistente:** en *Panel → Asistente* puedes escribir respuestas (vacaciones, horario, temarios…) con sus palabras clave, o tocar **✏️ Responder** en una pregunta que no entendió. Las groserías se responden con calma y no se guardan.
 
 **Si un alumno se queja de que lo sacan:** su cuenta se está usando en otro dispositivo. Desde *Opciones* puedes cambiarle la contraseña, y eso cierra todas sus sesiones.
 

@@ -736,3 +736,10 @@ details.card[open] > summary { margin-bottom: 14px; }
 .theme-toggle { border: 1px solid var(--border); background: var(--surface-2); color: var(--text); width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 16px; display: grid; place-items: center; }
 .theme-toggle:hover { border-color: var(--primary); }
 .subject-card .access-chip { align-self: flex-start; }
+
+/* Respuestas enseñadas */
+.answer-list { display: grid; gap: 10px; margin-bottom: 24px; }
+.answer-item { margin: 0; }
+.answer-item > summary { display: block; }
+.answer-preview { margin: 6px 0 0; color: var(--muted); white-space: pre-wrap; }
+.is-selected-row td { background: color-mix(in srgb, var(--primary) 10%, transparent); }
