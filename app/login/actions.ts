@@ -22,12 +22,18 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   if (error || !data.user) return { error: "Correo o contraseña incorrectos.", values };
 
   const db = createAdminClient();
-  const { data: profile } = await db
+  const { data: profile, error: dbError } = await db
     .from("profiles")
     .select("*")
     .eq("id", data.user.id)
     .maybeSingle<Profile>();
 
+  if (dbError) {
+    // La contraseña está bien, pero el servidor no pudo leer la base de datos: casi siempre es la clave secreta.
+    console.error("Perfil:", dbError.message);
+    await supabase.auth.signOut({ scope: "local" });
+    return { error: "La página no pudo leer la base de datos. Revisa en Vercel que SUPABASE_SECRET_KEY sea la clave secreta (sb_secret_…) completa.", values };
+  }
   if (!profile) {
     await supabase.auth.signOut({ scope: "local" });
     return { error: "Esta cuenta no tiene acceso a la plataforma.", values };
