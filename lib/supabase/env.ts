@@ -1,4 +1,6 @@
-function required(name: string, value: string | undefined): string {
+/** Las claves y la URL nunca llevan espacios: se quitan por si se pegaron con un salto de línea o un espacio. */
+function required(name: string, raw: string | undefined): string {
+  const value = raw?.replace(/\s+/g, "");
   if (!value) {
     throw new Error(
       `Falta la variable de entorno ${name}. Revisa el README (sección "Variables de entorno").`,
